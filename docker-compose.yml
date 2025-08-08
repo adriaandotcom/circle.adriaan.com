@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    container_name: postgres_cirlce
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: circle_development
+    ports:
+      - "5435:5432"
+    volumes:
+      - circle_db:/var/lib/postgresql/data
+volumes:
+  circle_db: {}

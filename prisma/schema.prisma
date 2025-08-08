@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Node {
+  id        String   @id @default(cuid())
+  label     String
+  type      String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  linksA Link[]  @relation("A")
+  linksB Link[]  @relation("B")
+  events Event[]
+}
+
+model Link {
+  id        String   @id @default(cuid())
+  nodeAId   String
+  nodeBId   String
+  type      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nodeA Node @relation("A", fields: [nodeAId], references: [id], onDelete: Cascade)
+  nodeB Node @relation("B", fields: [nodeBId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeAId, nodeBId])
+  @@index([nodeAId])
+  @@index([nodeBId])
+}
+
+model Event {
+  id      String   @id @default(cuid())
+  nodeId  String
+  type    String
+  payload Json?
+  at      DateTime @default(now())
+  node    Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId, at])
+}
