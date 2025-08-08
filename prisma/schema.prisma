@@ -7,13 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NodeType {
+  company
+  person
+  group
+}
+
 model Node {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   label     String
-  type      String?
+  type      NodeType?
   metadata  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   linksA Link[]  @relation("A")
   linksB Link[]  @relation("B")
