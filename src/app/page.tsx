@@ -119,8 +119,6 @@ export default function Home() {
             disabled={!a || !b || createLink.isPending}
             onClick={async () => {
               await createLink.mutateAsync({ nodeIds: [a, b] });
-              setA("");
-              setB("");
             }}
           >
             Link Nodes
