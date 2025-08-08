@@ -6,7 +6,7 @@ export const linkRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
     return ctx.prisma.link.findMany({
       orderBy: { createdAt: "desc" },
-      include: { nodeA: true, nodeB: true, role: true },
+      include: { nodeA: true, nodeB: true, roles: true },
     });
   }),
 
@@ -15,33 +15,45 @@ export const linkRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [a, b] = [...input.nodeIds].sort();
 
-      let roleId;
-
+      let roleConnect: { id: string } | undefined;
       if (input.role) {
-        const role = await ctx.prisma.role.findFirst({
-          where: {
-            name: input.role,
-          },
+        const slug = input.role
+          .toLocaleLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-+|-+$)/g, "");
+        const role = await ctx.prisma.role.upsert({
+          where: { slug },
+          update: { name: input.role },
+          create: { slug, name: input.role },
         });
-        if (role) roleId = role.id;
-        else {
-          const newRole = await ctx.prisma.role.create({
-            data: {
-              slug: input.role
-                .toLocaleLowerCase()
-                .replace(/[^a-z0-9]+/, "-")
-                .replace(/(^-+|-+$)/, ""),
-              name: input.role,
-            },
-          });
-          roleId = newRole.id;
-        }
+        roleConnect = { id: role.id };
       }
 
-      return ctx.prisma.link.upsert({
+      const existing = await ctx.prisma.link.findUnique({
         where: { nodeAId_nodeBId: { nodeAId: a, nodeBId: b } },
-        update: {},
-        create: { roleId, nodeAId: a, nodeBId: b },
+        include: { roles: true },
+      });
+
+      if (existing) {
+        if (roleConnect) {
+          const already = existing.roles.some((r) => r.id === roleConnect!.id);
+          if (!already) {
+            await ctx.prisma.link.update({
+              where: { id: existing.id },
+              data: { roles: { connect: [roleConnect] } },
+            });
+          }
+        }
+        return existing;
+      }
+
+      return ctx.prisma.link.create({
+        data: {
+          nodeAId: a,
+          nodeBId: b,
+          ...(roleConnect ? { roles: { connect: [roleConnect] } } : {}),
+        },
+        include: { roles: true, nodeA: true, nodeB: true },
       });
     }),
 

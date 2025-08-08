@@ -66,7 +66,10 @@ export default function Home() {
             className="rounded-md bg-slate-900 px-3 py-2 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             disabled={!label || createNode.isPending}
             onClick={async () => {
-              await createNode.mutateAsync({ label, type });
+              const nodeType: Exclude<NodeType, ""> = (
+                type === "" ? "person" : type
+              ) as Exclude<NodeType, "">;
+              await createNode.mutateAsync({ label, type: nodeType });
               setLabel("");
             }}
           >
@@ -266,7 +269,7 @@ function LinksList() {
   });
   const items = (links.data ?? []) as Array<{
     id: string;
-    role?: object;
+    roles?: Array<{ id: string; name: string }>;
     nodeA: { id: string; label: string };
     nodeB: { id: string; label: string };
   }>;
@@ -277,14 +280,21 @@ function LinksList() {
           key={l.id}
           className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700"
         >
-          <span>
+          <span className="flex items-center gap-2">
             {l.nodeA.label} ↔ {l.nodeB.label}
+            {l.roles && l.roles.length > 0 && (
+              <span className="mr-auto ml-2 flex flex-wrap gap-1">
+                {l.roles.map((r) => (
+                  <span
+                    key={r.id}
+                    className="rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300"
+                  >
+                    {r.name}
+                  </span>
+                ))}
+              </span>
+            )}
           </span>
-          {l.role && (
-            <span className="mr-auto ml-2 rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300">
-              {l.role.name}
-            </span>
-          )}
           <button
             className="rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
             onClick={async () => {
