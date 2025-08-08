@@ -15,7 +15,7 @@ export const createLinkInput = z.object({
   nodeIds: z
     .tuple([z.string().cuid(), z.string().cuid()])
     .refine(([a, b]) => a !== b, { message: "nodeIds must differ" }),
-  role: z.string().min(1).optional(),
+  role: z.string().optional(),
 });
 
 export const createEventInput = z.object({
