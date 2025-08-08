@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "@/server/trpc";
 import { createNodeInput } from "@/lib/schemas";
+import { z } from "zod";
 
 export const nodeRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
@@ -16,5 +17,12 @@ export const nodeRouter = router({
           metadata: input.metadata ?? undefined,
         },
       });
+    }),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Cascades will delete links/events via schema
+      return ctx.prisma.node.delete({ where: { id: input.id } });
     }),
 });

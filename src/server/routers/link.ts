@@ -3,6 +3,13 @@ import { createLinkInput } from "@/lib/schemas";
 import { z } from "zod";
 
 export const linkRouter = router({
+  list: publicProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.link.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { nodeA: true, nodeB: true },
+    });
+  }),
+
   create: publicProcedure
     .input(createLinkInput)
     .mutation(async ({ ctx, input }) => {
@@ -20,5 +27,11 @@ export const linkRouter = router({
       return ctx.prisma.link.findMany({
         where: { OR: [{ nodeAId: input.nodeId }, { nodeBId: input.nodeId }] },
       });
+    }),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.link.delete({ where: { id: input.id } });
     }),
 });
