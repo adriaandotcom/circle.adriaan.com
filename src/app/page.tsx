@@ -57,9 +57,9 @@ export default function Home() {
             <option value="" disabled>
               Select type
             </option>
-            <option value="company">Company</option>
             <option value="person">Person</option>
             <option value="group">Group</option>
+            <option value="company">Company</option>
             <option value="location">Location</option>
           </select>
           <button
