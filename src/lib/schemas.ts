@@ -2,15 +2,13 @@ import { z } from "zod";
 
 export const createNodeInput = z.object({
   label: z.string().min(1),
-  type: z.enum(["company", "person", "group"]).optional(),
-  metadata: z.any().optional(),
+  type: z.enum(["company", "person", "group"]),
 });
 
 export const updateNodeInput = z.object({
   id: z.string().cuid(),
   label: z.string().min(1).optional(),
-  type: z.enum(["company", "person", "group"]).optional(),
-  metadata: z.any().optional(),
+  type: z.enum(["company", "person", "group"]),
 });
 
 export const createLinkInput = z.object({
@@ -23,6 +21,5 @@ export const createLinkInput = z.object({
 export const createEventInput = z.object({
   nodeId: z.string().cuid(),
   type: z.string().min(1),
-  payload: z.any().optional(),
   description: z.string().min(1).optional(),
 });

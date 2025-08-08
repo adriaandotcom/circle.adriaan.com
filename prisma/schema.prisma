@@ -17,7 +17,6 @@ model Node {
   id        String    @id @default(cuid())
   label     String
   type      NodeType?
-  metadata  Json?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -46,7 +45,6 @@ model Event {
   id          String   @id @default(cuid())
   nodeId      String
   type        String
-  payload     Json?
   description String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

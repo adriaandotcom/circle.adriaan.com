@@ -25,7 +25,7 @@ export default function Home() {
 
   const [label, setLabel] = useState("");
   type NodeType = "company" | "person" | "group";
-  const [type, setType] = useState<"" | NodeType>("");
+  const [type, setType] = useState<"" | NodeType>("person");
   const [a, setA] = useState<string>("");
   const [b, setB] = useState<string>("");
   const nodeItems = (nodes.data ?? []) as Array<{
@@ -57,9 +57,7 @@ export default function Home() {
               Select type
             </option>
             <option value="company">Company</option>
-            <option value="person" selected={true}>
-              Person
-            </option>
+            <option value="person">Person</option>
             <option value="group">Group</option>
           </select>
           <button
@@ -93,7 +91,7 @@ export default function Home() {
             value={a}
             onChange={(e) => setA(e.target.value)}
           >
-            <option value="" selected disabled>
+            <option value="" disabled>
               Select node
             </option>
             {nodeItems.map((n) => (
@@ -107,7 +105,7 @@ export default function Home() {
             value={b}
             onChange={(e) => setB(e.target.value)}
           >
-            <option value="" selected disabled>
+            <option value="" disabled>
               Select node
             </option>
             {nodeItems.map((n) => (
