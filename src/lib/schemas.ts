@@ -24,4 +24,5 @@ export const createEventInput = z.object({
   nodeId: z.string().cuid(),
   type: z.string().min(1),
   payload: z.any().optional(),
+  description: z.string().min(1).optional(),
 });

@@ -43,13 +43,14 @@ model Link {
 }
 
 model Event {
-  id        String   @id @default(cuid())
-  nodeId    String
-  type      String
-  payload   Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  nodeId      String
+  type        String
+  payload     Json?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  node        Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
   @@index([nodeId, createdAt])
 }
