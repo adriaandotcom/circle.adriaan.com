@@ -2,13 +2,13 @@ import { z } from "zod";
 
 export const createNodeInput = z.object({
   label: z.string().min(1),
-  type: z.enum(["company", "person", "group"]),
+  type: z.enum(["company", "person", "group", "location"]),
 });
 
 export const updateNodeInput = z.object({
   id: z.string().cuid(),
   label: z.string().min(1).optional(),
-  type: z.enum(["company", "person", "group"]),
+  type: z.enum(["company", "person", "group", "location"]),
 });
 
 export const createLinkInput = z.object({

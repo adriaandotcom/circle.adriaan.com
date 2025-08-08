@@ -25,14 +25,14 @@ export default function Home() {
 
   const [label, setLabel] = useState("");
   const [linkRole, setlinkRole] = useState("");
-  type NodeType = "company" | "person" | "group";
+  type NodeType = "company" | "person" | "group" | "location";
   const [type, setType] = useState<"" | NodeType>("person");
   const [a, setA] = useState<string>("");
   const [b, setB] = useState<string>("");
   const nodeItems = (nodes.data ?? []) as Array<{
     id: string;
     label: string;
-    type: ("company" | "person" | "group") | null | undefined;
+    type: ("company" | "person" | "group" | "location") | null | undefined;
   }>;
   // events handled within NodeRow
 
@@ -60,6 +60,7 @@ export default function Home() {
             <option value="company">Company</option>
             <option value="person">Person</option>
             <option value="group">Group</option>
+            <option value="location">Location</option>
           </select>
           <button
             className="rounded-md bg-slate-900 px-3 py-2 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
@@ -146,7 +147,7 @@ function NodeRow({
   node: {
     id: string;
     label: string;
-    type?: "company" | "person" | "group" | null;
+    type?: "company" | "person" | "group" | "location" | null;
   };
 }) {
   const utils = api.useUtils();

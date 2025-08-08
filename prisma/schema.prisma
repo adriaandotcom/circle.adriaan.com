@@ -11,6 +11,7 @@ enum NodeType {
   company
   person
   group
+  location
 }
 
 model Node {
