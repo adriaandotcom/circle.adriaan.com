@@ -24,6 +24,7 @@ export default function Home() {
   // link delete handled in LinksList
 
   const [label, setLabel] = useState("");
+  const [linkRole, setlinkRole] = useState("");
   type NodeType = "company" | "person" | "group";
   const [type, setType] = useState<"" | NodeType>("person");
   const [a, setA] = useState<string>("");
@@ -39,7 +40,7 @@ export default function Home() {
     <main className="mx-auto max-w-3xl p-6 space-y-8">
       <section className="space-y-3">
         <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-          Nodes
+          Items
         </h1>
         <div className="grid grid-cols-3 gap-2">
           <input
@@ -71,7 +72,7 @@ export default function Home() {
               setType("");
             }}
           >
-            Add Node
+            Add item
           </button>
         </div>
         <ul className="space-y-2 pl-0 text-slate-700 dark:text-slate-300">
@@ -85,7 +86,7 @@ export default function Home() {
         <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
           Create link
         </h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <select
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={a}
@@ -100,6 +101,12 @@ export default function Home() {
               </option>
             ))}
           </select>
+          <input
+            className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+            placeholder="Role (optional)"
+            value={linkRole}
+            onChange={(e) => setlinkRole(e.target.value)}
+          />
           <select
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={b}
@@ -118,10 +125,10 @@ export default function Home() {
             className="rounded-md bg-slate-900 px-3 py-2 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             disabled={!a || !b || createLink.isPending}
             onClick={async () => {
-              await createLink.mutateAsync({ nodeIds: [a, b] });
+              await createLink.mutateAsync({ role: linkRole, nodeIds: [a, b] });
             }}
           >
-            Link Nodes
+            Link
           </button>
         </div>
       </section>
@@ -162,6 +169,15 @@ function NodeRow({
       await utils.link.invalidate();
     },
   });
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat("en-NL", {
+      year: "numeric",
+      month: "long",
+      weekday: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    }).format(new Date(date));
 
   return (
     <li className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
@@ -204,11 +220,11 @@ function NodeRow({
           <div className="flex items-start gap-2">
             <textarea
               className="min-h-[60px] w-full rounded-md border border-slate-300 bg-white p-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              placeholder="Add event text..."
+              placeholder="Add a note, place, or link..."
               id={`event-${node.id}`}
             />
             <button
-              className="h-[60px] rounded-md bg-slate-900 px-3 py-2 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+              className="rounded-md bg-slate-900 px-2 py-1 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 whitespace-nowrap"
               onClick={async () => {
                 const el = document.getElementById(
                   `event-${node.id}`
@@ -220,7 +236,7 @@ function NodeRow({
                 await events.refetch();
               }}
             >
-              Add Event
+              Add note
             </button>
           </div>
 
@@ -231,7 +247,7 @@ function NodeRow({
                 className="rounded-md border border-slate-200 p-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-300"
               >
                 <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {new Date(e.createdAt as unknown as string).toLocaleString()}
+                  {formatDate(e.createdAt as unknown as Date)}
                 </div>
                 <div className="whitespace-pre-wrap">{e.description}</div>
               </li>
@@ -264,6 +280,9 @@ function LinksList() {
         >
           <span>
             {l.nodeA.label} ↔ {l.nodeB.label}
+          </span>
+          <span className="mr-auto ml-2 rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300">
+            {l.role.name}
           </span>
           <button
             className="rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"

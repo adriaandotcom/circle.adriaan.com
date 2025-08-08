@@ -6,7 +6,7 @@ export const linkRouter = router({
   list: publicProcedure.query(async ({ ctx }) => {
     return ctx.prisma.link.findMany({
       orderBy: { createdAt: "desc" },
-      include: { nodeA: true, nodeB: true },
+      include: { nodeA: true, nodeB: true, role: true },
     });
   }),
 
@@ -14,10 +14,34 @@ export const linkRouter = router({
     .input(createLinkInput)
     .mutation(async ({ ctx, input }) => {
       const [a, b] = [...input.nodeIds].sort();
+
+      let roleId;
+
+      if (input.role) {
+        const role = await ctx.prisma.role.findFirst({
+          where: {
+            name: input.role,
+          },
+        });
+        if (role) roleId = role.id;
+        else {
+          const newRole = await ctx.prisma.role.create({
+            data: {
+              slug: input.role
+                .toLocaleLowerCase()
+                .replace(/[^a-z0-9]+/, "-")
+                .replace(/(^-+|-+$)/, ""),
+              name: input.role,
+            },
+          });
+          roleId = newRole.id;
+        }
+      }
+
       return ctx.prisma.link.upsert({
         where: { nodeAId_nodeBId: { nodeAId: a, nodeBId: b } },
-        update: { type: input.type ?? undefined },
-        create: { nodeAId: a, nodeBId: b, type: input.type },
+        update: {},
+        create: { roleId, nodeAId: a, nodeBId: b },
       });
     }),
 
