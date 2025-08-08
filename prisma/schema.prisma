@@ -24,6 +24,8 @@ model Node {
   linksA Link[]  @relation("A")
   linksB Link[]  @relation("B")
   events Event[]
+
+  @@unique([label, type])
 }
 
 model Link {
