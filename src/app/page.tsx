@@ -183,7 +183,14 @@ function NodeRow({
           </span>
         </button>
         <button
-          className="rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+          className="ml-auto rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          Comment
+        </button>
+        <button
+          className="ml-2 rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
           onClick={async () => {
             if (confirm("Are you sure you want to delete this node?")) {
               await deleteNode.mutateAsync({ id: node.id });
