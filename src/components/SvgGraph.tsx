@@ -1,6 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  BuildingOfficeIcon,
+  UserIcon,
+  UsersIcon,
+  MapPinIcon,
+} from "@heroicons/react/24/solid";
 
 export type SvgNode = {
   id: string;
@@ -121,6 +127,23 @@ const SvgGraph = ({ nodes, links, dark, onSelect }: Props) => {
                   stroke={nodeStroke}
                   strokeWidth={2}
                 />
+                {(() => {
+                  const size = 12;
+                  const common = {
+                    x: -size / 2,
+                    y: -size / 2,
+                    width: size,
+                    height: size,
+                  } as const;
+                  const type = (n as any).type as string | undefined;
+                  if (type === "company")
+                    return <BuildingOfficeIcon {...common} fill={text} />;
+                  if (type === "group")
+                    return <UsersIcon {...common} fill={text} />;
+                  if (type === "location")
+                    return <MapPinIcon {...common} fill={text} />;
+                  return <UserIcon {...common} fill={text} />;
+                })()}
                 {n.label ? (
                   <text
                     x={0}
