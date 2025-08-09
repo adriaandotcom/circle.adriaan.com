@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { api } from "@/trpc/react";
+import SvgGraph, { type SvgNode, type SvgLink } from "@/components/SvgGraph";
 
 export default function Home() {
   const utils = api.useUtils();
   const nodes = api.node.list.useQuery();
+  const linksQuery = api.link.list.useQuery();
   const createNode = api.node.create.useMutation({
     onSuccess: async () => {
       await utils.node.list.invalidate();
@@ -35,6 +37,44 @@ export default function Home() {
     type: ("company" | "person" | "group" | "location") | null | undefined;
   }>;
   // events handled within NodeRow
+
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const allLinks: SvgLink[] = (linksQuery.data ?? []).map((l: any) => ({
+    id: l.id,
+    source: l.nodeA?.id ?? l.nodeAId,
+    target: l.nodeB?.id ?? l.nodeBId,
+  }));
+
+  const graphNodes: SvgNode[] = (() => {
+    if (!selectedNodeId)
+      return nodeItems.map((n) => ({
+        id: n.id,
+        label: n.label,
+        type: n.type ?? undefined,
+      }));
+    const neighborIds = new Set<string>([selectedNodeId]);
+    allLinks.forEach((l) => {
+      if (l.source === selectedNodeId) neighborIds.add(l.target);
+      if (l.target === selectedNodeId) neighborIds.add(l.source);
+    });
+    return nodeItems
+      .filter((n) => neighborIds.has(n.id))
+      .map((n) => ({ id: n.id, label: n.label, type: n.type ?? undefined }));
+  })();
+
+  const graphLinks: SvgLink[] = (() => {
+    if (!selectedNodeId) return allLinks;
+    // include links that connect the selected node OR connect any two neighbors of the selected node
+    const neighborIds = new Set<string>([selectedNodeId]);
+    allLinks.forEach((l) => {
+      if (l.source === selectedNodeId) neighborIds.add(l.target);
+      if (l.target === selectedNodeId) neighborIds.add(l.source);
+    });
+    return allLinks.filter(
+      (l) => neighborIds.has(l.source) && neighborIds.has(l.target)
+    );
+  })();
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
@@ -78,9 +118,39 @@ export default function Home() {
         </div>
         <ul className="space-y-2 pl-0 text-slate-700 dark:text-slate-300">
           {nodeItems.map((n) => (
-            <NodeRow key={n.id} node={n} />
+            <NodeRow
+              key={n.id}
+              node={n}
+              onSelect={(id) => setSelectedNodeId(id)}
+            />
           ))}
         </ul>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
+          Graph
+        </h2>
+        <div className="w-full aspect-square rounded-md border border-slate-200 p-2 dark:border-slate-700">
+          <SvgGraph
+            nodes={graphNodes}
+            links={graphLinks}
+            onSelect={(id) => setSelectedNodeId(id)}
+          />
+        </div>
+        {selectedNodeId ? (
+          <div className="text-sm text-slate-600 dark:text-slate-300">
+            Showing direct connections for{" "}
+            <code>{nodeItems.find((n) => n.id === selectedNodeId)?.label}</code>{" "}
+            ·
+            <button
+              className="ml-2 underline"
+              onClick={() => setSelectedNodeId(null)}
+            >
+              Clear
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-3">
@@ -146,12 +216,14 @@ export default function Home() {
 
 function NodeRow({
   node,
+  onSelect,
 }: {
   node: {
     id: string;
     label: string;
     type?: "company" | "person" | "group" | "location" | null;
   };
+  onSelect?: (id: string) => void;
 }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
@@ -185,7 +257,10 @@ function NodeRow({
       <div className="flex items-center justify-between">
         <button
           className="text-left"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => {
+            setOpen((v) => !v);
+            onSelect?.(node.id);
+          }}
           aria-expanded={open}
         >
           <span className="flex items-center gap-2">
