@@ -54,7 +54,7 @@ const SvgGraph = ({ nodes, links, dark, onSelect }: Props) => {
   };
 
   const stroke = dark ? "#94a3b8" : "#64748b"; // slate tones
-  const text = dark ? "#e2e8f0" : "#0f172a";
+  const text = dark ? "#ffffff" : "#0f172a";
   const personFill = dark ? "#1f2937" : "#e2e8f0";
   const nodeStroke = dark ? "#475569" : "#94a3b8";
 

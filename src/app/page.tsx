@@ -1,7 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/trpc/react";
 import SvgGraph, { type SvgNode, type SvgLink } from "@/components/SvgGraph";
+import NodeAutocomplete, {
+  type Option as NodeOption,
+} from "@/components/NodeAutocomplete";
 
 export default function Home() {
   const utils = api.useUtils();
@@ -39,6 +42,16 @@ export default function Home() {
   // events handled within NodeRow
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setIsDark(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const allLinks: SvgLink[] = (linksQuery.data ?? []).map((l: any) => ({
     id: l.id,
@@ -75,6 +88,18 @@ export default function Home() {
       (l) => neighborIds.has(l.source) && neighborIds.has(l.target)
     );
   })();
+
+  const roleOptions: NodeOption[] = useMemo(() => {
+    const names = new Set<string>();
+    (linksQuery.data ?? []).forEach((l: any) => {
+      (l.roles ?? []).forEach((r: any) => {
+        if (r?.name) names.add(String(r.name));
+      });
+    });
+    return Array.from(names)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ id: name, label: name }));
+  }, [linksQuery.data]);
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
@@ -136,6 +161,7 @@ export default function Home() {
             nodes={graphNodes}
             links={graphLinks}
             onSelect={(id) => setSelectedNodeId(id)}
+            dark={isDark}
           />
         </div>
         {selectedNodeId ? (
@@ -158,40 +184,35 @@ export default function Home() {
           Create link
         </h2>
         <div className="grid grid-cols-4 gap-2">
-          <select
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          <NodeAutocomplete
+            options={
+              nodeItems.map((n) => ({
+                id: n.id,
+                label: n.label,
+              })) as NodeOption[]
+            }
             value={a}
-            onChange={(e) => setA(e.target.value)}
-          >
-            <option value="" disabled>
-              Select node
-            </option>
-            {nodeItems.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.label}
-              </option>
-            ))}
-          </select>
-          <input
-            className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
-            placeholder="Role (optional)"
-            value={linkRole}
-            onChange={(e) => setlinkRole(e.target.value)}
+            onChange={(id) => setA(id)}
+            placeholder="Select node"
           />
-          <select
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          <NodeAutocomplete
+            options={roleOptions}
+            value={linkRole}
+            onChange={(val) => setlinkRole(val)}
+            placeholder="Role (optional)"
+            freeText
+          />
+          <NodeAutocomplete
+            options={
+              nodeItems.map((n) => ({
+                id: n.id,
+                label: n.label,
+              })) as NodeOption[]
+            }
             value={b}
-            onChange={(e) => setB(e.target.value)}
-          >
-            <option value="" disabled>
-              Select node
-            </option>
-            {nodeItems.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.label}
-              </option>
-            ))}
-          </select>
+            onChange={(id) => setB(id)}
+            placeholder="Select node"
+          />
           <button
             className="rounded-md bg-slate-900 px-3 py-2 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
             disabled={!a || !b || createLink.isPending}
