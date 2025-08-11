@@ -194,6 +194,21 @@ export default function NodeRow({
                   setText(e.target.value);
                   setActiveIdx(0);
                 }}
+                onPaste={async (e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items || items.length === 0) return;
+                  const blobs: File[] = [];
+                  for (const it of items) {
+                    if (it.kind === "file" && it.type.startsWith("image/")) {
+                      const file = it.getAsFile();
+                      if (file) blobs.push(file);
+                    }
+                  }
+                  if (blobs.length) {
+                    e.preventDefault();
+                    setFiles((prev) => [...prev, ...blobs]);
+                  }
+                }}
                 onKeyDown={async (e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     e.preventDefault();
@@ -301,6 +316,7 @@ export default function NodeRow({
           <FileUpload
             accept="image/*"
             multiple
+            files={files}
             onChange={(f) => setFiles(f)}
             rightSlot={
               <button

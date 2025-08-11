@@ -8,6 +8,7 @@ export type FileUploadProps = {
   multiple?: boolean;
   onChange?: (files: File[]) => void;
   rightSlot?: React.ReactNode;
+  files?: File[];
 };
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -15,20 +16,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   multiple = false,
   onChange,
   rightSlot,
+  files: filesProp,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const [internalFiles, setInternalFiles] = useState<File[]>([]);
+  const files = filesProp ?? internalFiles;
 
   const openPicker = () => inputRef.current?.click();
   const handleChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const selected = Array.from(e.target.files ?? []);
-    setFiles(selected);
+    setInternalFiles(selected);
     onChange?.(selected);
   };
 
   const removeAt = (idx: number) => {
     const next = files.filter((_, i) => i !== idx);
-    setFiles(next);
+    setInternalFiles(next);
     onChange?.(next);
   };
 
