@@ -3,7 +3,9 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { Textarea } from "@/components/ui/textarea";
+import { FileUpload } from "@/components/ui/file-upload";
 import { type NodeType } from "@/lib/schemas";
 
 export default function NodeRow({
@@ -175,7 +177,7 @@ export default function NodeRow({
 
       {open ? (
         <div className="mt-3 space-y-3">
-          <div className="flex items-start gap-2">
+          <div className="relative">
             <div className="relative w-full">
               <Textarea
                 ref={textareaRef}
@@ -245,65 +247,62 @@ export default function NodeRow({
                 </ul>
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-              />
-              {files.length ? (
-                <div className="text-[10px] text-slate-500">
-                  {files.length} selected
-                </div>
-              ) : null}
-            </div>
-            <Button
-              onClick={async () => {
-                const cleanDescription = text.trim();
-                if (!cleanDescription && files.length === 0) return;
-                const storageDescription =
-                  convertToStorageFormat(cleanDescription);
-                const created = await addEvent.mutateAsync({
-                  nodeId: node.id,
-                  description: storageDescription || "",
-                });
-                try {
-                  if (files.length) {
-                    const toBase64 = async (f: File): Promise<string> =>
-                      await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const result = String(reader.result ?? "");
-                          const idx = result.indexOf(",");
-                          resolve(idx >= 0 ? result.slice(idx + 1) : result);
-                        };
-                        reader.onerror = () => reject(reader.error);
-                        reader.readAsDataURL(f);
-                      });
-
-                    const payload = await Promise.all(
-                      files.map(async (f) => ({
-                        mimeType: f.type || "application/octet-stream",
-                        base64: await toBase64(f),
-                        filename: f.name,
-                      }))
-                    );
-                    await uploadMedia.mutateAsync({
-                      eventId: created.id,
-                      files: payload,
-                    });
-                  }
-                } finally {
-                  setFiles([]);
-                  setText("");
-                  await events.refetch();
-                }
-              }}
-            >
-              Add note
-            </Button>
           </div>
+          <FileUpload
+            accept="image/*"
+            multiple
+            onChange={(f) => setFiles(f)}
+            rightSlot={
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-300"
+                onClick={async () => {
+                  const cleanDescription = text.trim();
+                  if (!cleanDescription && files.length === 0) return;
+                  const storageDescription =
+                    convertToStorageFormat(cleanDescription);
+                  const created = await addEvent.mutateAsync({
+                    nodeId: node.id,
+                    description: storageDescription || "",
+                  });
+                  try {
+                    if (files.length) {
+                      const toBase64 = async (f: File): Promise<string> =>
+                        await new Promise((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const result = String(reader.result ?? "");
+                            const idx = result.indexOf(",");
+                            resolve(idx >= 0 ? result.slice(idx + 1) : result);
+                          };
+                          reader.onerror = () => reject(reader.error);
+                          reader.readAsDataURL(f);
+                        });
+
+                      const payload = await Promise.all(
+                        files.map(async (f) => ({
+                          mimeType: f.type || "application/octet-stream",
+                          base64: await toBase64(f),
+                          filename: f.name,
+                        }))
+                      );
+                      await uploadMedia.mutateAsync({
+                        eventId: created.id,
+                        files: payload,
+                      });
+                    }
+                  } finally {
+                    setFiles([]);
+                    setText("");
+                    await events.refetch();
+                  }
+                }}
+              >
+                <span>Save</span>
+                <PaperAirplaneIcon className="h-5 w-5" />
+              </button>
+            }
+          />
 
           <ul className="space-y-2">
             {(events.data ?? []).map((e) => (

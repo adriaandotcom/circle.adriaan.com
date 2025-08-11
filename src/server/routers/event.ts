@@ -1,6 +1,6 @@
 import { router, publicProcedure } from "@/server/trpc";
 import { z } from "zod";
-import { uploadEventMediaInput } from "@/lib/schemas";
+import { uploadEventMediaInput, createEventInput } from "@/lib/schemas";
 import crypto from "node:crypto";
 import imageSize from "image-size";
 
@@ -16,18 +16,13 @@ export const eventRouter = router({
     }),
 
   create: publicProcedure
-    .input(
-      z.object({
-        nodeId: z.string().cuid(),
-        description: z.string().min(1),
-      })
-    )
+    .input(createEventInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.event.create({
         data: {
           nodeId: input.nodeId,
           type: "note",
-          description: input.description,
+          description: input.description ?? null,
         },
         select: { id: true },
       });

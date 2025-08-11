@@ -32,8 +32,7 @@ export const createLinkInput = z.object({
 
 export const createEventInput = z.object({
   nodeId: z.string().cuid(),
-  type: z.string().min(1),
-  description: z.string().min(1).optional(),
+  description: z.string().optional(),
 });
 
 export const uploadEventMediaInput = z.object({
