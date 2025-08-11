@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/trpc/react";
 import SvgGraph, { type SvgNode, type SvgLink } from "@/components/SvgGraph";
 import CreateLinkForm from "@/components/CreateLinkForm";
+import NodeGrid from "@/components/NodeGrid";
 import NodeRow from "@/components/NodeRow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,20 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
+      <section className="space-y-3">
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+          All members
+        </h1>
+        <NodeGrid
+          nodes={nodeItems.map((n) => ({
+            id: n.id,
+            label: n.label,
+            type: n.type,
+          }))}
+          onSelect={(id) => setSelectedNodeId(id)}
+        />
+      </section>
+
       <section className="space-y-3">
         <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
           Items
