@@ -10,10 +10,9 @@ type NodeGridProps = {
 };
 
 const typeToRingClass: Record<NodeType, string> = {
-  company: "ring-4 ring-orange-400",
+  company: "ring-2 ring-orange-400",
   person: "ring-0",
-  group: "ring-4 ring-purple-400",
-  location: "ring-4 ring-sky-400",
+  group: "ring-2 ring-purple-400",
 };
 
 const PlaceholderAvatar = ({ className }: { className?: string }) => (

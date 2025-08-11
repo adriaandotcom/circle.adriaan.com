@@ -5,13 +5,13 @@ import {
   BuildingOfficeIcon,
   UserIcon,
   UsersIcon,
-  MapPinIcon,
 } from "@heroicons/react/24/solid";
+import { type NodeType } from "@/lib/schemas";
 
 export type SvgNode = {
   id: string;
   label?: string;
-  type?: "company" | "person" | "group" | "location" | string;
+  type?: NodeType;
 };
 export type SvgLink = { id?: string; source: string; target: string };
 
@@ -41,7 +41,6 @@ const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
     return map;
   }, [nodes, links]);
   const { laidOutNodes, nodeIndex } = useMemo(() => {
-    const count = nodes.length || 1;
     const radius = 380;
     const center = 500;
     const idx: Record<string, number> = {};
@@ -95,7 +94,6 @@ const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
     if (type === "person" || !type) return personFill; // keep persons as they are
     if (type === "company") return dark ? "#60a5fa" : "#3b82f6"; // blue
     if (type === "group") return dark ? "#22d3ee" : "#06b6d4"; // cyan
-    if (type === "location") return dark ? "#f59e0b" : "#d97706"; // amber
     return personFill;
   };
 
@@ -167,8 +165,6 @@ const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
                     return <BuildingOfficeIcon {...common} fill={text} />;
                   if (type === "group")
                     return <UsersIcon {...common} fill={text} />;
-                  if (type === "location")
-                    return <MapPinIcon {...common} fill={text} />;
                   return <UserIcon {...common} fill={text} />;
                 })()}
                 {n.label ? (
