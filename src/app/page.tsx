@@ -148,6 +148,7 @@ export default function Home() {
             links={graphLinks}
             onSelect={(id) => setSelectedNodeId(id)}
             dark={isDark}
+            selectedId={selectedNodeId}
           />
         </div>
         {selectedNodeId ? (

@@ -20,10 +20,11 @@ type Props = {
   links: SvgLink[];
   dark?: boolean;
   onSelect?: (id: string) => void;
+  selectedId?: string | null;
 };
 
 // Simple, dependency-free 2D SVG graph: nodes arranged on a circle with straight edges
-const SvgGraph = ({ nodes, links, dark, onSelect }: Props) => {
+const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const neighborsById = useMemo(() => {
@@ -40,19 +41,45 @@ const SvgGraph = ({ nodes, links, dark, onSelect }: Props) => {
     return map;
   }, [nodes, links]);
   const { laidOutNodes, nodeIndex } = useMemo(() => {
-    const n = nodes.length || 1;
-    const radius = 380; // workable radius inside 1000x1000 viewBox
+    const count = nodes.length || 1;
+    const radius = 380;
     const center = 500;
     const idx: Record<string, number> = {};
     nodes.forEach((node, i) => (idx[node.id] = i));
-    const laid = nodes.map((node, i) => {
-      const angle = (2 * Math.PI * i) / n - Math.PI / 2; // start at top
+
+    // Which node should be centered?
+    let centerId: string | undefined = undefined;
+    if (selectedId && nodes.some((n) => n.id === selectedId))
+      centerId = selectedId;
+    else {
+      const firstPerson = nodes.find((n) => (n as any).type === "person");
+      centerId = firstPerson?.id ?? nodes[0]?.id;
+    }
+
+    // If no nodes, return empty
+    if (!nodes.length)
+      return {
+        laidOutNodes: [] as Array<SvgNode & { x: number; y: number }>,
+        nodeIndex: idx,
+      };
+
+    // Place center node at middle; others around circle
+    const others = nodes.filter((n) => n.id !== centerId);
+    const laid: Array<SvgNode & { x: number; y: number }> = [];
+    // center first
+    const centerNode = nodes.find((n) => n.id === centerId)!;
+    laid.push({ ...centerNode, x: center, y: center });
+    // distribute others
+    const m = others.length || 1;
+    others.forEach((node, i) => {
+      const angle = (2 * Math.PI * i) / m - Math.PI / 2;
       const x = center + radius * Math.cos(angle);
       const y = center + radius * Math.sin(angle);
-      return { ...node, x, y };
+      laid.push({ ...node, x, y });
     });
+
     return { laidOutNodes: laid, nodeIndex: idx };
-  }, [nodes]);
+  }, [nodes, selectedId]);
 
   const getPoint = (id: string) => {
     const i = nodeIndex[id];
