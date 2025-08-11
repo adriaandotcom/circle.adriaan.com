@@ -4,6 +4,7 @@ import NodeAutocomplete, {
   type Option as NodeOption,
 } from "@/components/NodeAutocomplete";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function CreateLinkForm({
   nodes,
@@ -42,15 +43,14 @@ export default function CreateLinkForm({
         placeholder="Role (optional)"
         freeText
       />
-      <button
-        className="rounded-md bg-slate-900 px-3 py-2 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+      <Button
         disabled={!a || !b}
         onClick={async () => {
           await onCreate(a, b, role);
         }}
       >
         Link
-      </button>
+      </Button>
     </div>
   );
 }

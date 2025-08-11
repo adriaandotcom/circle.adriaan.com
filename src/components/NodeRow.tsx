@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { api } from "@/trpc/react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 type NodeType = "company" | "person" | "group" | "location";
 
@@ -64,8 +66,9 @@ export default function NodeRow({
   return (
     <li className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
       <div className="flex items-center justify-between">
-        <button
-          className="text-left"
+        <Button
+          variant="link"
+          className="p-0 h-auto text-left"
           onClick={() => {
             setOpen((v) => !v);
             onSelect?.(node.id);
@@ -80,16 +83,18 @@ export default function NodeRow({
               </span>
             ) : null}
           </span>
-        </button>
-        <button
-          className="ml-auto rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+        </Button>
+        <Button
+          variant="secondary"
+          className="ml-auto"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
         >
           Comment
-        </button>
-        <button
-          className="ml-2 rounded-md bg-slate-200 px-2 py-1 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+        </Button>
+        <Button
+          variant="secondary"
+          className="ml-2"
           onClick={async () => {
             if (confirm("Are you sure you want to delete this node?")) {
               await deleteNode.mutateAsync({ id: node.id });
@@ -97,19 +102,18 @@ export default function NodeRow({
           }}
         >
           Delete
-        </button>
+        </Button>
       </div>
 
       {open ? (
         <div className="mt-3 space-y-3">
           <div className="flex items-start gap-2">
-            <textarea
-              className="min-h-[60px] w-full rounded-md border border-slate-300 bg-white p-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            <Textarea
+              className="min-h-[60px] w-full"
               placeholder="Add a note, place, or link..."
               id={`event-${node.id}`}
             />
-            <button
-              className="rounded-md bg-slate-900 px-2 py-1 text-slate-100 hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 whitespace-nowrap"
+            <Button
               onClick={async () => {
                 const el = document.getElementById(
                   `event-${node.id}`
@@ -122,7 +126,7 @@ export default function NodeRow({
               }}
             >
               Add note
-            </button>
+            </Button>
           </div>
 
           <ul className="space-y-2">
