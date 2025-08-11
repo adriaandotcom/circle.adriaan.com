@@ -125,20 +125,13 @@ export default function Home() {
         isCreating={createNode.isPending}
       />
 
-      <section className="space-y-3">
-        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-          Items
-        </h1>
-        <ul className="space-y-2 pl-0 text-slate-700 dark:text-slate-300">
-          {nodeItems.map((n) => (
-            <NodeRow
-              key={n.id}
-              node={n}
-              onSelect={(id) => setSelectedNodeId(id)}
-            />
-          ))}
-        </ul>
-      </section>
+      {selectedNodeId ? (
+        <NodeDetailModal
+          node={nodeItems.find((n) => n.id === selectedNodeId)!}
+          open={!!selectedNodeId}
+          onOpenChange={(o) => !o && setSelectedNodeId(null)}
+        />
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
@@ -188,6 +181,44 @@ export default function Home() {
         <LinksList />
       </section>
     </main>
+  );
+}
+
+function NodeDetailModal({
+  node,
+  open,
+  onOpenChange,
+}: {
+  node: { id: string; label: string; type: NodeType | null | undefined };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onOpenChange(false);
+      }}
+    >
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {node.label}
+          </h3>
+          <button
+            className="h-8 w-8 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <ul className="space-y-2 pl-0 text-slate-700 dark:text-slate-300">
+          <NodeRow node={node as any} forceOpen hideHeader />
+        </ul>
+      </div>
+    </div>
   );
 }
 

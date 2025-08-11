@@ -11,12 +11,16 @@ import { type NodeType } from "@/lib/schemas";
 export default function NodeRow({
   node,
   onSelect,
+  forceOpen,
+  hideHeader,
 }: {
   node: { id: string; label: string; type?: NodeType | null };
   onSelect?: (id: string) => void;
+  forceOpen?: boolean;
+  hideHeader?: boolean;
 }) {
   const utils = api.useUtils();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(forceOpen ?? false);
   const [files, setFiles] = useState<File[]>([]);
   const addEvent = api.event.create.useMutation({
     onSuccess: async () => {
@@ -140,47 +144,50 @@ export default function NodeRow({
 
   return (
     <li className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
-      <div className="flex items-center justify-between">
-        <Button
-          variant="link"
-          className="p-0 h-auto text-left"
-          onClick={() => {
-            setOpen((v) => !v);
-            onSelect?.(node.id);
-          }}
-          aria-expanded={open}
-        >
-          <span className="flex items-center gap-2">
-            {node.label}
-            {node.type && node.type !== "person" ? (
-              <span className="rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300">
-                {node.type}
-              </span>
-            ) : null}
-          </span>
-        </Button>
-        <Button
-          variant="secondary"
-          className="ml-auto"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-        >
-          Comment
-        </Button>
-        <Button
-          variant="secondary"
-          className="ml-2"
-          onClick={async () => {
-            if (confirm("Are you sure you want to delete this node?")) {
-              await deleteNode.mutateAsync({ id: node.id });
-            }
-          }}
-        >
-          Delete
-        </Button>
-      </div>
+      {hideHeader ? null : (
+        <div className="flex items-center justify-between">
+          <Button
+            variant="link"
+            className="p-0 h-auto text-left"
+            onClick={() => {
+              if (forceOpen) return;
+              setOpen((v) => !v);
+              onSelect?.(node.id);
+            }}
+            aria-expanded={open}
+          >
+            <span className="flex items-center gap-2">
+              {node.label}
+              {node.type && node.type !== "person" ? (
+                <span className="rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300">
+                  {node.type}
+                </span>
+              ) : null}
+            </span>
+          </Button>
+          <Button
+            variant="secondary"
+            className="ml-auto"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            Comment
+          </Button>
+          <Button
+            variant="secondary"
+            className="ml-2"
+            onClick={async () => {
+              if (confirm("Are you sure you want to delete this node?")) {
+                await deleteNode.mutateAsync({ id: node.id });
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      )}
 
-      {open ? (
+      {forceOpen || open ? (
         <div className="mt-3 space-y-3">
           <div className="relative">
             <div className="relative w-full">
