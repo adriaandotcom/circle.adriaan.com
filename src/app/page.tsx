@@ -4,6 +4,7 @@ import { api } from "@/trpc/react";
 import SvgGraph, { type SvgNode, type SvgLink } from "@/components/SvgGraph";
 import CreateLinkForm from "@/components/CreateLinkForm";
 import NodeGrid from "@/components/NodeGrid";
+import AddNodeModal from "@/components/AddNodeModal";
 import NodeRow from "@/components/NodeRow";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export default function Home() {
   const [label, setLabel] = useState("");
   type NodeType = "company" | "person" | "group" | "location";
   const [type, setType] = useState<NodeType>("person");
+  const [addOpen, setAddOpen] = useState(false);
   const nodeItems = (nodes.data ?? []) as Array<{
     id: string;
     label: string;
@@ -100,9 +102,12 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
       <section className="space-y-3">
-        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-          All members
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+            All members
+          </h1>
+          <Button onClick={() => setAddOpen(true)}>Add</Button>
+        </div>
         <NodeGrid
           nodes={nodeItems.map((n) => ({
             id: n.id,
@@ -113,41 +118,20 @@ export default function Home() {
         />
       </section>
 
+      <AddNodeModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCreate={async (newLabel, newType) => {
+          await createNode.mutateAsync({ label: newLabel, type: newType });
+          setLabel("");
+        }}
+        isCreating={createNode.isPending}
+      />
+
       <section className="space-y-3">
         <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
           Items
         </h1>
-        <div className="grid grid-cols-3 gap-2">
-          <Input
-            className="flex-1"
-            placeholder="Label"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-          <Select
-            value={type || undefined}
-            onValueChange={(v) => setType(v as NodeType)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="person">Person</SelectItem>
-              <SelectItem value="group">Group</SelectItem>
-              <SelectItem value="company">Company</SelectItem>
-              <SelectItem value="location">Location</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            disabled={!label || createNode.isPending}
-            onClick={async () => {
-              await createNode.mutateAsync({ label, type });
-              setLabel("");
-            }}
-          >
-            Add item
-          </Button>
-        </div>
         <ul className="space-y-2 pl-0 text-slate-700 dark:text-slate-300">
           {nodeItems.map((n) => (
             <NodeRow
