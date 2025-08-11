@@ -3,6 +3,7 @@ import { z } from "zod";
 import { uploadEventMediaInput, createEventInput } from "@/lib/schemas";
 import crypto from "node:crypto";
 import imageSize from "image-size";
+import { fetchTwitterProfileWithEnvVars } from "@/lib/twitter";
 
 export const eventRouter = router({
   list: publicProcedure
@@ -18,14 +19,75 @@ export const eventRouter = router({
   create: publicProcedure
     .input(createEventInput)
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.event.create({
+      const created = await ctx.prisma.event.create({
         data: {
           nodeId: input.nodeId,
           type: "note",
           description: input.description ?? null,
         },
-        select: { id: true },
+        select: { id: true, description: true },
       });
+
+      // Fire-and-forget: if the description contains a Twitter/X profile URL, fetch avatar and attach as media
+      void (async () => {
+        try {
+          const text = created.description ?? "";
+          const match = text.match(
+            /@?https?:\/\/(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,15})(?:[\/?].*)?/i
+          );
+          const handle = match?.[1];
+          if (!handle) return;
+
+          const profile = await fetchTwitterProfileWithEnvVars(handle);
+          if (!profile?.avatar) return;
+
+          const res = await fetch(profile.avatar);
+          if (!res.ok) return;
+          const mimeType = res.headers.get("content-type") || "image/jpeg";
+          const arrayBuf = await res.arrayBuffer();
+          const bytes = Buffer.from(arrayBuf);
+          const sha256 = crypto
+            .createHash("sha256")
+            .update(bytes)
+            .digest("hex");
+
+          let imageWidth: number | null = null;
+          let imageHeight: number | null = null;
+          try {
+            const dim = imageSize(bytes);
+            if (dim.width && dim.height) {
+              imageWidth = dim.width;
+              imageHeight = dim.height;
+            }
+          } catch {}
+
+          const media = await ctx.prisma.media.upsert({
+            where: { sha256 },
+            update: {},
+            create: {
+              mimeType,
+              kind: mimeType.startsWith("image/") ? "image" : "other",
+              byteSize: bytes.length,
+              sha256,
+              imageWidth: imageWidth ?? undefined,
+              imageHeight: imageHeight ?? undefined,
+              data: bytes,
+            },
+          });
+
+          await ctx.prisma.eventMedia.upsert({
+            where: {
+              eventId_mediaId: { eventId: created.id, mediaId: media.id },
+            },
+            update: { visible: true },
+            create: { eventId: created.id, mediaId: media.id, visible: true },
+          });
+        } catch {
+          // Silently ignore background errors
+        }
+      })();
+
+      return { id: created.id };
     }),
 
   mediaForEvent: publicProcedure
