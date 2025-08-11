@@ -447,6 +447,7 @@ function EventMediaList({
           key={m.id}
           className="relative aspect-square overflow-hidden rounded border border-slate-200 dark:border-slate-700"
         >
+          <DeleteMediaButton eventId={eventId} mediaId={m.id} />
           {m.mimeType.startsWith("image/") ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -516,6 +517,32 @@ function SetNodeImageButton({
       onClick={onClick}
     >
       {label}
+    </button>
+  );
+}
+
+function DeleteMediaButton({
+  eventId,
+  mediaId,
+}: {
+  eventId: string;
+  mediaId: string;
+}) {
+  const utils = api.useUtils();
+  const del = api.event.deleteMedia.useMutation({
+    onSuccess: async () => {
+      await utils.event.mediaForEvent.invalidate({ eventId });
+    },
+  });
+  return (
+    <button
+      className="absolute right-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white hover:bg-black/80"
+      onClick={async () => {
+        if (!confirm("Remove this media from the event?")) return;
+        await del.mutateAsync({ eventId, mediaId });
+      }}
+    >
+      Delete
     </button>
   );
 }

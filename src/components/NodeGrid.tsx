@@ -54,7 +54,17 @@ const NodeCard = ({
       onClick={() => onSelect?.(node.id)}
       className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md dark:border-slate-700"
     >
-      {/* background image */}
+      {/* color background layers (always render to show through transparent images) */}
+      <div
+        className="absolute inset-0 block dark:hidden"
+        style={{ backgroundColor: node.colorHexLight ?? "#e2e8f0" }}
+      />
+      <div
+        className="absolute inset-0 hidden dark:block"
+        style={{ backgroundColor: node.colorHexDark ?? "#1f2937" }}
+      />
+
+      {/* background image over color layers */}
       {node.imageMediaId ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -63,19 +73,9 @@ const NodeCard = ({
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
-        <>
-          <div
-            className="absolute inset-0 block dark:hidden"
-            style={{ backgroundColor: node.colorHexLight ?? "#e2e8f0" }}
-          />
-          <div
-            className="absolute inset-0 hidden dark:block"
-            style={{ backgroundColor: node.colorHexDark ?? "#1f2937" }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <PlaceholderAvatar className="h-12 w-12" />
-          </div>
-        </>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <PlaceholderAvatar className="h-12 w-12" />
+        </div>
       )}
 
       {/* dark gradient overlay bottom */}

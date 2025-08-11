@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "@/server/trpc";
 import { z } from "zod";
 import { uploadEventMediaInput, createEventInput } from "@/lib/schemas";
+import { fetchTweetImageUrlsWithEnvVars } from "@/lib/twitter";
 import crypto from "node:crypto";
 import imageSize from "image-size";
 import { fetchTwitterProfileWithEnvVars } from "@/lib/twitter";
@@ -90,6 +91,59 @@ export const eventRouter = router({
         } catch {
           // Silently ignore background errors
         }
+      })();
+
+      // Also, if the text includes a tweet URL with images, import the images as media
+      void (async () => {
+        try {
+          const text = created.description ?? "";
+          const tweet = text.match(
+            /https?:\/\/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i
+          );
+          const tweetId = tweet?.[1];
+          if (!tweetId) return;
+          const urls = await fetchTweetImageUrlsWithEnvVars(tweetId);
+          for (const u of urls) {
+            const res = await fetch(u);
+            if (!res.ok) continue;
+            const mimeType = res.headers.get("content-type") || "image/jpeg";
+            const arrayBuf = await res.arrayBuffer();
+            const bytes = Buffer.from(arrayBuf);
+            const sha256 = crypto
+              .createHash("sha256")
+              .update(bytes)
+              .digest("hex");
+            let imageWidth: number | null = null;
+            let imageHeight: number | null = null;
+            try {
+              const dim = imageSize(bytes);
+              if (dim.width && dim.height) {
+                imageWidth = dim.width;
+                imageHeight = dim.height;
+              }
+            } catch {}
+            const media = await ctx.prisma.media.upsert({
+              where: { sha256 },
+              update: {},
+              create: {
+                mimeType,
+                kind: "image",
+                byteSize: bytes.length,
+                sha256,
+                imageWidth: imageWidth ?? undefined,
+                imageHeight: imageHeight ?? undefined,
+                data: bytes,
+              },
+            });
+            await ctx.prisma.eventMedia.upsert({
+              where: {
+                eventId_mediaId: { eventId: created.id, mediaId: media.id },
+              },
+              update: { visible: true },
+              create: { eventId: created.id, mediaId: media.id, visible: true },
+            });
+          }
+        } catch {}
       })();
 
       return { id: created.id };
@@ -203,6 +257,22 @@ export const eventRouter = router({
         }
       });
 
+      return { ok: true };
+    }),
+
+  deleteMedia: publicProcedure
+    .input(z.object({ eventId: z.string().cuid(), mediaId: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.eventMedia.delete({
+        where: {
+          eventId_mediaId: { eventId: input.eventId, mediaId: input.mediaId },
+        },
+      });
+      const remaining = await ctx.prisma.eventMedia.count({
+        where: { mediaId: input.mediaId },
+      });
+      if (remaining === 0)
+        await ctx.prisma.media.delete({ where: { id: input.mediaId } });
       return { ok: true };
     }),
 });

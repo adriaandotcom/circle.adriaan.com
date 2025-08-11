@@ -64,6 +64,7 @@ export const nodeRouter = router({
       };
 
       let inputBytes: Buffer = Buffer.from(original.data);
+      let faceDetected = false;
       try {
         const faceOutput: any = await replicate.run(
           "ahmdyassr/detect-crop-face:23ef97b1c72422837f0b25aacad4ec5fa8e2423e2660bc4599347287e14cf94d",
@@ -83,18 +84,30 @@ export const nodeRouter = router({
           const r = await fetch(faceUrl);
           if (r.ok) {
             const buf = Buffer.from(await r.arrayBuffer());
-            if (buf.length > 0) inputBytes = buf;
+            if (buf.length > 0) {
+              inputBytes = buf;
+              faceDetected = true;
+            }
           }
         }
       } catch {
         // ignore face detection failures
       }
 
+      // If no face was detected, do not remove background either; just use the original media as avatar
+      if (!faceDetected) {
+        return ctx.prisma.node.update({
+          where: { id: input.nodeId },
+          data: { imageMediaId: original.id },
+          select: { id: true, imageMediaId: true },
+        });
+      }
+
       // Call Replicate BiRefNet to remove background using the face-cropped (or original) image
       const blob = new Blob([inputBytes], { type: original.mimeType });
       const url = await (async () => {
         const output: any = await replicate.run(
-          "men1scus/birefnet:f74986db0355b58403ed20963af156525e2891ea3c2d499bfbfb2a28cd87c5d7",
+          "851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
           { input: { image: blob } }
         );
         const direct = normalizeUrl(output);
