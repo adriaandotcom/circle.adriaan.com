@@ -29,6 +29,7 @@ export default function Home() {
     id: string;
     label: string;
     type: NodeType | null | undefined;
+    color?: string | null;
   }>;
   // events handled within NodeRow
 
@@ -94,6 +95,7 @@ export default function Home() {
             id: n.id,
             label: n.label,
             type: n.type,
+            color: (n as any).color ?? null,
           }))}
           onSelect={(id) => setSelectedNodeId(id)}
         />
@@ -102,8 +104,12 @@ export default function Home() {
       <AddNodeModal
         open={addOpen}
         onOpenChange={setAddOpen}
-        onCreate={async (newLabel, newType) => {
-          await createNode.mutateAsync({ label: newLabel, type: newType });
+        onCreate={async (newLabel, newType, color) => {
+          await createNode.mutateAsync({
+            label: newLabel,
+            type: newType,
+            color,
+          });
         }}
         isCreating={createNode.isPending}
       />

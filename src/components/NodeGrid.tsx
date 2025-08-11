@@ -5,7 +5,12 @@ import { cn } from "@/lib/utils";
 import { type NodeType } from "@/lib/schemas";
 
 type NodeGridProps = {
-  nodes: Array<{ id: string; label: string; type?: NodeType | null }>;
+  nodes: Array<{
+    id: string;
+    label: string;
+    type?: NodeType | null;
+    color?: string | null;
+  }>;
   onSelect?: (id: string) => void;
 };
 
@@ -32,7 +37,12 @@ const NodeCard = ({
   node,
   onSelect,
 }: {
-  node: { id: string; label: string; type?: NodeType | null };
+  node: {
+    id: string;
+    label: string;
+    type?: NodeType | null;
+    color?: string | null;
+  };
   onSelect?: (id: string) => void;
 }) => {
   const ringClass = typeToRingClass[(node.type ?? "person") as NodeType];
@@ -43,9 +53,15 @@ const NodeCard = ({
     >
       <div
         className={cn(
-          "mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 ring-offset-2 dark:bg-slate-800",
-          ringClass
+          "mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800",
+          // When a custom color is provided for a group, draw the ring via box-shadow only
+          node.type === "group" && node.color ? `ring-0` : ringClass
         )}
+        style={
+          node.type === "group" && node.color
+            ? ({ boxShadow: `0 0 0 2px ${node.color}` } as React.CSSProperties)
+            : undefined
+        }
       >
         <PlaceholderAvatar />
       </div>

@@ -13,11 +13,12 @@ const AddNodeModal = ({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (label: string, type: NodeType) => Promise<void>;
+  onCreate: (label: string, type: NodeType, color?: string) => Promise<void>;
   isCreating?: boolean;
 }) => {
   const [label, setLabel] = useState("");
   const [type, setType] = useState<NodeType>("person");
+  const [color, setColor] = useState<string>("#7c3aed");
   const typeOptions: Array<{ value: NodeType; label: string }> = [
     { value: "person", label: "Person" },
     { value: "group", label: "Group" },
@@ -40,6 +41,11 @@ const AddNodeModal = ({
         ? localStorage.getItem("last-node-type")
         : null;
     setType(isNodeType(saved) ? saved : "person");
+    const savedColor =
+      typeof window !== "undefined"
+        ? localStorage.getItem("last-group-color")
+        : null;
+    if (savedColor) setColor(savedColor);
   }, [open]);
 
   useEffect(() => {
@@ -53,9 +59,11 @@ const AddNodeModal = ({
 
   const submit = async () => {
     if (!label.trim()) return;
-    await onCreate(label.trim(), type);
+    await onCreate(label.trim(), type, type === "group" ? color : undefined);
     if (typeof window !== "undefined")
       localStorage.setItem("last-node-type", type);
+    if (typeof window !== "undefined" && type === "group")
+      localStorage.setItem("last-group-color", color);
     onOpenChange(false);
   };
 
@@ -125,6 +133,26 @@ const AddNodeModal = ({
               </button>
             ))}
           </div>
+          {type === "group" ? (
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                Group color
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="h-9 w-12 cursor-pointer rounded-md border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-slate-900"
+                  aria-label="Pick group color"
+                />
+                <div
+                  className="h-6 w-6 rounded-full border border-slate-300"
+                  style={{ backgroundColor: color }}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button

@@ -12,6 +12,7 @@ export type SvgNode = {
   id: string;
   label?: string;
   type?: NodeType;
+  color?: string | null;
 };
 export type SvgLink = { id?: string; source: string; target: string };
 
@@ -90,10 +91,10 @@ const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
   const personFill = dark ? "#1f2937" : "#e2e8f0";
   const nodeStroke = dark ? "#475569" : "#94a3b8";
 
-  const fillByType = (type?: string) => {
+  const fillByType = (type?: string, color?: string | null) => {
     if (type === "person" || !type) return personFill; // keep persons as they are
     if (type === "company") return dark ? "#60a5fa" : "#3b82f6"; // blue
-    if (type === "group") return dark ? "#22d3ee" : "#06b6d4"; // cyan
+    if (type === "group") return color ?? (dark ? "#a78bfa" : "#8b5cf6");
     return personFill;
   };
 
@@ -133,7 +134,7 @@ const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
                 neighborSet?.has(hoveredNodeId) ||
                 neighborSet?.has(hoveredNodeId as string));
             const activeFill = dark ? "#94a3b8" : "#334155";
-            const baseFill = fillByType((n as any).type);
+            const baseFill = fillByType((n as any).type, (n as any).color);
             const circleFill = isConnected ? activeFill : baseFill;
             const circleR = isConnected ? 16 : 14;
 

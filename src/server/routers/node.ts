@@ -14,6 +14,7 @@ export const nodeRouter = router({
         data: {
           label: input.label,
           type: input.type ?? null,
+          color: input.color,
         },
       });
     }),

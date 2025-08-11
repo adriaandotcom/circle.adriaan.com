@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,37 @@ export default function NodeRow({
     },
   });
 
+  const nodesQuery = api.node.list.useQuery();
+  const nodeOptions = useMemo(
+    () =>
+      ((nodesQuery.data ?? []) as Array<{ id: string; label: string }>).map(
+        (n) => ({ id: n.id, label: n.label })
+      ),
+    [nodesQuery.data]
+  );
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [text, setText] = useState("");
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const caretPos = () => textareaRef.current?.selectionStart ?? text.length;
+  const prefixUntilCaret = () => text.slice(0, caretPos());
+
+  const mentionQuery = useMemo(() => {
+    const prefix = prefixUntilCaret();
+    const match = prefix.match(/(^|\s)@([^@\n\r\t\f]*)$/);
+    return match ? match[2] : null;
+  }, [text]);
+
+  const mentionResults = useMemo(() => {
+    if (!mentionQuery) return [] as Array<{ id: string; label: string }>;
+    const q = mentionQuery.trim().toLowerCase();
+    if (!q) return [] as Array<{ id: string; label: string }>;
+    return nodeOptions
+      .filter((o) => o.label.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [mentionQuery, nodeOptions]);
+
   const formatDate = (date: Date) =>
     new Intl.DateTimeFormat("en-NL", {
       year: "numeric",
@@ -41,25 +72,49 @@ export default function NodeRow({
       minute: "numeric",
     }).format(new Date(date));
 
-  const linkify = (text?: string) => {
-    if (!text) return null;
-    const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g);
-    return parts.map((part, idx) => {
-      const isUrl = /^(https?:\/\/|www\.)/.test(part);
-      if (!isUrl) return <span key={idx}>{part}</span>;
-      const href = part.startsWith("http") ? part : `https://${part}`;
-      return (
-        <a
-          key={idx}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-        >
-          {part}
-        </a>
-      );
-    });
+  const linkify = (value?: string) => {
+    if (!value) return null;
+    const nodes: ReactNode[] = [];
+    const regex =
+      /(https?:\/\/[^\s]+|www\.[^\s]+)|@\[([^\]]+)\]\(([A-Za-z0-9_-]+)\)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(value))) {
+      if (match.index > lastIndex)
+        nodes.push(value.slice(lastIndex, match.index));
+      const [full, url, mentionLabel, mentionId] = match;
+      if (url) {
+        const href = url.startsWith("http") ? url : `https://${url}`;
+        nodes.push(
+          <a
+            key={`${href}-${match.index}`}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          >
+            {url}
+          </a>
+        );
+      } else if (mentionId) {
+        nodes.push(
+          <a
+            key={`${mentionId}-${match.index}`}
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              onSelect?.(mentionId);
+            }}
+            className="underline text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+          >
+            {mentionLabel}
+          </a>
+        );
+      } else nodes.push(full);
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < value.length) nodes.push(value.slice(lastIndex));
+    return nodes;
   };
 
   return (
@@ -107,20 +162,81 @@ export default function NodeRow({
       {open ? (
         <div className="mt-3 space-y-3">
           <div className="flex items-start gap-2">
-            <Textarea
-              className="min-h-[60px] w-full"
-              placeholder="Add a note, place, or link..."
-              id={`event-${node.id}`}
-            />
+            <div className="relative w-full">
+              <Textarea
+                ref={textareaRef}
+                className="min-h-[60px] w-full"
+                placeholder="Add a note, place, link, or @mention..."
+                id={`event-${node.id}`}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setActiveIdx(0);
+                }}
+                onKeyDown={(e) => {
+                  if (!mentionResults.length) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIdx((i) =>
+                      Math.min(i + 1, mentionResults.length - 1)
+                    );
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIdx((i) => Math.max(i - 1, 0));
+                  } else if (e.key === "Enter") {
+                    if (mentionResults[activeIdx]) {
+                      e.preventDefault();
+                      const { id: mId, label: mLabel } =
+                        mentionResults[activeIdx];
+                      const prefix = prefixUntilCaret();
+                      const suffix = text.slice(caretPos());
+                      const replacedPrefix = prefix.replace(
+                        /(^|\s)@([^@\n\r\t\f]*)$/,
+                        `$1@[${mLabel}](${mId})`
+                      );
+                      const next = `${replacedPrefix}${suffix}`;
+                      setText(next);
+                      setTimeout(() => textareaRef.current?.focus());
+                    }
+                  }
+                }}
+              />
+              {mentionResults.length > 0 && (
+                <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                  {mentionResults.map((opt, idx) => (
+                    <li
+                      key={opt.id}
+                      className={`cursor-pointer rounded px-2 py-1 text-sm ${
+                        idx === activeIdx
+                          ? "bg-slate-100 dark:bg-slate-700"
+                          : ""
+                      }`}
+                      onMouseEnter={() => setActiveIdx(idx)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        const prefix = prefixUntilCaret();
+                        const suffix = text.slice(caretPos());
+                        const replacedPrefix = prefix.replace(
+                          /(^|\s)@([^@\n\r\t\f]*)$/,
+                          `$1@[${opt.label}](${opt.id})`
+                        );
+                        const next = `${replacedPrefix}${suffix}`;
+                        setText(next);
+                        setTimeout(() => textareaRef.current?.focus());
+                      }}
+                    >
+                      {opt.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <Button
               onClick={async () => {
-                const el = document.getElementById(
-                  `event-${node.id}`
-                ) as HTMLTextAreaElement | null;
-                const description = el?.value?.trim() ?? "";
+                const description = text.trim();
                 if (!description) return;
                 await addEvent.mutateAsync({ nodeId: node.id, description });
-                if (el) el.value = "";
+                setText("");
                 await events.refetch();
               }}
             >
