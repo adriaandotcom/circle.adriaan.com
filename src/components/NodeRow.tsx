@@ -40,6 +40,27 @@ export default function NodeRow({
       minute: "numeric",
     }).format(new Date(date));
 
+  const linkify = (text?: string) => {
+    if (!text) return null;
+    const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g);
+    return parts.map((part, idx) => {
+      const isUrl = /^(https?:\/\/|www\.)/.test(part);
+      if (!isUrl) return <span key={idx}>{part}</span>;
+      const href = part.startsWith("http") ? part : `https://${part}`;
+      return (
+        <a
+          key={idx}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+        >
+          {part}
+        </a>
+      );
+    });
+  };
+
   return (
     <li className="rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
       <div className="flex items-center justify-between">
@@ -113,7 +134,9 @@ export default function NodeRow({
                 <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   {formatDate(e.createdAt as unknown as Date)}
                 </div>
-                <div className="whitespace-pre-wrap">{e.description}</div>
+                <div className="whitespace-pre-wrap">
+                  {linkify(e.description as unknown as string)}
+                </div>
               </li>
             ))}
           </ul>
