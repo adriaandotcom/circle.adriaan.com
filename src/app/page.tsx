@@ -30,7 +30,8 @@ export default function Home() {
     id: string;
     label: string;
     type: NodeType | null | undefined;
-    color?: string | null;
+    colorHexLight?: string | null;
+    colorHexDark?: string | null;
     imageMediaId?: string | null;
   }>;
   // events handled within NodeRow
@@ -105,7 +106,8 @@ export default function Home() {
             id: n.id,
             label: n.label,
             type: n.type,
-            color: (n as any).color ?? null,
+            colorHexLight: (n as any).colorHexLight ?? null,
+            colorHexDark: (n as any).colorHexDark ?? null,
             imageMediaId: (n as any).imageMediaId ?? null,
           }))}
           onSelect={(id) => setSelectedNodeId(id)}

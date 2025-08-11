@@ -32,12 +32,13 @@ enum AddedBy {
 }
 
 model Node {
-  id        String    @id @default(cuid())
-  label     String
-  type      NodeType?
-  color     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  label         String
+  type          NodeType?
+  colorHexLight String?
+  colorHexDark  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   linksA Link[]  @relation("A")
   linksB Link[]  @relation("B")

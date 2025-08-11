@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "@/server/trpc";
 import { createNodeInput } from "@/lib/schemas";
+import { pickRandomColorPair } from "@/lib/colors";
 import { z } from "zod";
 import crypto from "node:crypto";
 import imageSize from "image-size";
@@ -13,11 +14,13 @@ export const nodeRouter = router({
   create: publicProcedure
     .input(createNodeInput)
     .mutation(async ({ ctx, input }) => {
+      const { light, dark } = pickRandomColorPair();
       return ctx.prisma.node.create({
         data: {
           label: input.label,
           type: input.type ?? null,
-          color: input.color,
+          colorHexLight: input.color ?? light,
+          colorHexDark: dark,
         },
       });
     }),
@@ -44,28 +47,61 @@ export const nodeRouter = router({
       });
       if (!original) throw new Error("Media not found");
 
-      // Call Replicate to remove background using a duplicate of the original
+      // Optionally detect/crop face first; if it fails, fall back to original
       const replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
       });
-      const blob = new Blob([original.data], { type: original.mimeType });
+      const originalBlob = new Blob([original.data], {
+        type: original.mimeType,
+      });
+
+      const normalizeUrl = (v: any): string | null => {
+        if (!v) return null;
+        if (typeof v === "string") return v;
+        if (typeof v.url === "function") return v.url();
+        if (typeof v.url === "string") return v.url;
+        return null;
+      };
+
+      let inputBytes: Buffer = Buffer.from(original.data);
+      try {
+        const faceOutput: any = await replicate.run(
+          "ahmdyassr/detect-crop-face:23ef97b1c72422837f0b25aacad4ec5fa8e2423e2660bc4599347287e14cf94d",
+          { input: { image: originalBlob, padding: 0.6 } }
+        );
+        let faceUrl: string | null = normalizeUrl(faceOutput);
+        if (!faceUrl && Array.isArray(faceOutput)) {
+          for (const it of faceOutput) {
+            const u = normalizeUrl(it);
+            if (u) {
+              faceUrl = u;
+              break;
+            }
+          }
+        }
+        if (faceUrl) {
+          const r = await fetch(faceUrl);
+          if (r.ok) {
+            const buf = Buffer.from(await r.arrayBuffer());
+            if (buf.length > 0) inputBytes = buf;
+          }
+        }
+      } catch {
+        // ignore face detection failures
+      }
+
+      // Call Replicate BiRefNet to remove background using the face-cropped (or original) image
+      const blob = new Blob([inputBytes], { type: original.mimeType });
       const url = await (async () => {
         const output: any = await replicate.run(
-          "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
+          "men1scus/birefnet:f74986db0355b58403ed20963af156525e2891ea3c2d499bfbfb2a28cd87c5d7",
           { input: { image: blob } }
         );
-        const normalize = (v: any): string | null => {
-          if (!v) return null;
-          if (typeof v === "string") return v;
-          if (typeof v.url === "function") return v.url();
-          if (typeof v.url === "string") return v.url;
-          return null;
-        };
-        const direct = normalize(output);
+        const direct = normalizeUrl(output);
         if (direct) return direct;
         if (Array.isArray(output)) {
           for (const it of output) {
-            const u = normalize(it);
+            const u = normalizeUrl(it);
             if (u) return u;
           }
         }

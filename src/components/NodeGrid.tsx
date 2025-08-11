@@ -9,7 +9,8 @@ type NodeGridProps = {
     id: string;
     label: string;
     type?: NodeType | null;
-    color?: string | null;
+    colorHexLight?: string | null;
+    colorHexDark?: string | null;
     imageMediaId?: string | null;
   }>;
   onSelect?: (id: string) => void;
@@ -42,42 +43,49 @@ const NodeCard = ({
     id: string;
     label: string;
     type?: NodeType | null;
-    color?: string | null;
+    colorHexLight?: string | null;
+    colorHexDark?: string | null;
     imageMediaId?: string | null;
   };
   onSelect?: (id: string) => void;
 }) => {
-  const ringClass = typeToRingClass[(node.type ?? "person") as NodeType];
   return (
     <button
       onClick={() => onSelect?.(node.id)}
-      className="group flex flex-col items-center justify-start rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:shadow dark:border-slate-700 dark:bg-slate-900"
+      className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md dark:border-slate-700"
     >
-      <div
-        className={cn(
-          "mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800",
-          // When a custom color is provided for a group, draw the ring via box-shadow only
-          node.type === "group" && node.color ? `ring-0` : ringClass
-        )}
-        style={
-          node.type === "group" && node.color
-            ? ({ boxShadow: `0 0 0 2px ${node.color}` } as React.CSSProperties)
-            : undefined
-        }
-      >
-        {node.imageMediaId ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`/api/media/${node.imageMediaId}`}
-            alt=""
-            className="h-16 w-16 rounded-full object-cover"
+      {/* background image */}
+      {node.imageMediaId ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/api/media/${node.imageMediaId}`}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <>
+          <div
+            className="absolute inset-0 block dark:hidden"
+            style={{ backgroundColor: node.colorHexLight ?? "#e2e8f0" }}
           />
-        ) : (
-          <PlaceholderAvatar />
-        )}
-      </div>
-      <div className="line-clamp-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700 group-hover:text-slate-900 dark:text-slate-200 dark:group-hover:text-white">
-        {node.label}
+          <div
+            className="absolute inset-0 hidden dark:block"
+            style={{ backgroundColor: node.colorHexDark ?? "#1f2937" }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <PlaceholderAvatar className="h-12 w-12" />
+          </div>
+        </>
+      )}
+
+      {/* dark gradient overlay bottom */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+      {/* name label */}
+      <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+        <div className="truncate text-left text-sm font-semibold text-white drop-shadow">
+          {node.label}
+        </div>
       </div>
     </button>
   );

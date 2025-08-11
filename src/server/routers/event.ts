@@ -82,6 +82,11 @@ export const eventRouter = router({
             update: { visible: true },
             create: { eventId: created.id, mediaId: media.id, visible: true },
           });
+          // Touch event to bump updatedAt so clients watching list/media can notice changes
+          await ctx.prisma.event.update({
+            where: { id: created.id },
+            data: { updatedAt: new Date() },
+          });
         } catch {
           // Silently ignore background errors
         }

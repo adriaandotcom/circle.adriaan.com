@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import React, { useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { PaperAirplaneIcon, TrashIcon } from "@heroicons/react/24/solid";
@@ -422,7 +422,16 @@ function EventMediaList({
   eventId: string;
   nodeId: string;
 }) {
-  const mediaQuery = api.event.mediaForEvent.useQuery({ eventId });
+  const mediaQuery = api.event.mediaForEvent.useQuery(
+    { eventId },
+    {
+      refetchOnWindowFocus: false,
+      refetchInterval: (q) => {
+        const current = (q.state.data as unknown as any[]) ?? [];
+        return current.length === 0 ? 1500 : false;
+      },
+    }
+  );
   const items = (mediaQuery.data ?? []) as Array<{
     id: string;
     mimeType: string;
@@ -471,19 +480,42 @@ function SetNodeImageButton({
   mediaId: string;
 }) {
   const utils = api.useUtils();
+  const [state, setState] = React.useState<"idle" | "loading" | "done">("idle");
   const setImage = api.node.setImage.useMutation({
     onSuccess: async () => {
       await utils.node.list.invalidate();
     },
   });
+  const onClick = async () => {
+    if (state !== "idle") return;
+    setState("loading");
+    try {
+      await setImage.mutateAsync({ nodeId, mediaId });
+      setState("done");
+      setTimeout(() => setState("idle"), 5000);
+    } catch {
+      setState("idle");
+    }
+  };
+  const label =
+    state === "loading"
+      ? "Setting…"
+      : state === "done"
+      ? "Avatar set"
+      : "Use as avatar";
   return (
     <button
-      className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white"
-      onClick={async () => {
-        await setImage.mutateAsync({ nodeId, mediaId });
-      }}
+      className={`absolute bottom-1 right-1 rounded px-1.5 py-0.5 text-[10px] text-white ${
+        state === "done"
+          ? "bg-emerald-600"
+          : state === "loading"
+          ? "bg-black/40 cursor-not-allowed"
+          : "bg-black/60 hover:bg-black/70"
+      }`}
+      disabled={state !== "idle"}
+      onClick={onClick}
     >
-      Set
+      {label}
     </button>
   );
 }
