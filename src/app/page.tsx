@@ -1,20 +1,13 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/trpc/react";
 import SvgGraph, { type SvgNode, type SvgLink } from "@/components/SvgGraph";
 import CreateLinkForm from "@/components/CreateLinkForm";
 import NodeGrid from "@/components/NodeGrid";
 import AddNodeModal from "@/components/AddNodeModal";
+import { type NodeType } from "@/lib/schemas";
 import NodeRow from "@/components/NodeRow";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 
 export default function Home() {
   const utils = api.useUtils();
@@ -30,22 +23,12 @@ export default function Home() {
       await utils.link.invalidate();
     },
   });
-  const deleteNode = api.node.delete.useMutation({
-    onSuccess: async () => {
-      await utils.node.list.invalidate();
-      await utils.link.invalidate();
-    },
-  });
-  // link delete handled in LinksList
 
-  const [label, setLabel] = useState("");
-  type NodeType = "company" | "person" | "group" | "location";
-  const [type, setType] = useState<NodeType>("person");
   const [addOpen, setAddOpen] = useState(false);
   const nodeItems = (nodes.data ?? []) as Array<{
     id: string;
     label: string;
-    type: ("company" | "person" | "group" | "location") | null | undefined;
+    type: NodeType | null | undefined;
   }>;
   // events handled within NodeRow
 
@@ -97,8 +80,6 @@ export default function Home() {
     );
   })();
 
-  // role options now handled inside CreateLinkForm when/if needed
-
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
       <section className="space-y-3">
@@ -123,7 +104,6 @@ export default function Home() {
         onOpenChange={setAddOpen}
         onCreate={async (newLabel, newType) => {
           await createNode.mutateAsync({ label: newLabel, type: newType });
-          setLabel("");
         }}
         isCreating={createNode.isPending}
       />
@@ -194,7 +174,6 @@ export default function Home() {
   );
 }
 
-// NodeRow moved to components
 function LinksList() {
   const utils = api.useUtils();
   const links = api.link.list.useQuery();

@@ -1,14 +1,18 @@
 import { z } from "zod";
+import { NodeType as PrismaNodeType, type $Enums } from "@prisma/client";
+
+export const nodeTypeEnum = z.enum(PrismaNodeType);
+export type NodeType = $Enums.NodeType;
 
 export const createNodeInput = z.object({
   label: z.string().min(1),
-  type: z.enum(["company", "person", "group", "location"]),
+  type: nodeTypeEnum,
 });
 
 export const updateNodeInput = z.object({
   id: z.string().cuid(),
   label: z.string().min(1).optional(),
-  type: z.enum(["company", "person", "group", "location"]),
+  type: nodeTypeEnum,
 });
 
 export const createLinkInput = z.object({

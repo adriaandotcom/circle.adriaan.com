@@ -4,8 +4,7 @@ import { useState } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-
-type NodeType = "company" | "person" | "group" | "location";
+import { type NodeType } from "@/lib/schemas";
 
 export default function NodeRow({
   node,

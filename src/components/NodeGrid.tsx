@@ -2,8 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-
-type NodeType = "company" | "person" | "group" | "location";
+import { type NodeType } from "@/lib/schemas";
 
 type NodeGridProps = {
   nodes: Array<{ id: string; label: string; type?: NodeType | null }>;
