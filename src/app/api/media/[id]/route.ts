@@ -4,8 +4,9 @@ export const runtime = "nodejs";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  ctxParams: Promise<{ params: { id: string } }> | { params: { id: string } }
 ) {
+  const { params } = await ctxParams;
   const ctx = await createTRPCContext();
   const media = await ctx.prisma.media.findUnique({ where: { id: params.id } });
   if (!media) return new Response("Not found", { status: 404 });
