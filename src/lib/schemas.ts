@@ -35,3 +35,17 @@ export const createEventInput = z.object({
   type: z.string().min(1),
   description: z.string().min(1).optional(),
 });
+
+export const uploadEventMediaInput = z.object({
+  eventId: z.string().cuid(),
+  files: z
+    .array(
+      z.object({
+        mimeType: z.string().min(1),
+        /** base64 without data: prefix */
+        base64: z.string().min(1),
+        filename: z.string().min(1).optional(),
+      })
+    )
+    .min(1),
+});

@@ -15,7 +15,13 @@ export default function NodeRow({
 }) {
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const addEvent = api.event.create.useMutation({
+    onSuccess: async () => {
+      await utils.event.invalidate();
+    },
+  });
+  const uploadMedia = api.event.uploadMedia.useMutation({
     onSuccess: async () => {
       await utils.event.invalidate();
     },
@@ -239,18 +245,60 @@ export default function NodeRow({
                 </ul>
               )}
             </div>
+            <div className="flex flex-col gap-2">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              />
+              {files.length ? (
+                <div className="text-[10px] text-slate-500">
+                  {files.length} selected
+                </div>
+              ) : null}
+            </div>
             <Button
               onClick={async () => {
                 const cleanDescription = text.trim();
-                if (!cleanDescription) return;
+                if (!cleanDescription && files.length === 0) return;
                 const storageDescription =
                   convertToStorageFormat(cleanDescription);
-                await addEvent.mutateAsync({
+                const created = await addEvent.mutateAsync({
                   nodeId: node.id,
-                  description: storageDescription,
+                  description: storageDescription || "",
                 });
-                setText("");
-                await events.refetch();
+                try {
+                  if (files.length) {
+                    const toBase64 = async (f: File): Promise<string> =>
+                      await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const result = String(reader.result ?? "");
+                          const idx = result.indexOf(",");
+                          resolve(idx >= 0 ? result.slice(idx + 1) : result);
+                        };
+                        reader.onerror = () => reject(reader.error);
+                        reader.readAsDataURL(f);
+                      });
+
+                    const payload = await Promise.all(
+                      files.map(async (f) => ({
+                        mimeType: f.type || "application/octet-stream",
+                        base64: await toBase64(f),
+                        filename: f.name,
+                      }))
+                    );
+                    await uploadMedia.mutateAsync({
+                      eventId: created.id,
+                      files: payload,
+                    });
+                  }
+                } finally {
+                  setFiles([]);
+                  setText("");
+                  await events.refetch();
+                }
               }}
             >
               Add note
@@ -269,11 +317,53 @@ export default function NodeRow({
                 <div className="whitespace-pre-wrap">
                   {linkify(e.description as unknown as string)}
                 </div>
+                <EventMediaList eventId={e.id as unknown as string} />
               </li>
             ))}
           </ul>
         </div>
       ) : null}
     </li>
+  );
+}
+
+function EventMediaList({ eventId }: { eventId: string }) {
+  const mediaQuery = api.event.mediaForEvent.useQuery({ eventId });
+  const items = (mediaQuery.data ?? []) as Array<{
+    id: string;
+    mimeType: string;
+    byteSize: number;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  }>;
+  if (!items.length) return null;
+  return (
+    <div className="mt-2 grid grid-cols-3 gap-2">
+      {items.map((m) => (
+        <div
+          key={m.id}
+          className="relative aspect-square overflow-hidden rounded border border-slate-200 dark:border-slate-700"
+        >
+          {m.mimeType.startsWith("image/") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/media/${m.id}`}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <a
+              href={`/api/media/${m.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block p-2 text-xs underline"
+            >
+              {m.mimeType}
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

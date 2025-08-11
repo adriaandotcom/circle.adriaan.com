@@ -13,6 +13,24 @@ enum NodeType {
   group
 }
 
+// Media related enums
+enum MediaKind {
+  image
+  video
+  audio
+  document
+  other
+}
+
+enum StorageProvider {
+  database
+}
+
+enum AddedBy {
+  user
+  system
+}
+
 model Node {
   id        String    @id @default(cuid())
   label     String
@@ -66,5 +84,39 @@ model Event {
   updatedAt   DateTime @updatedAt
   node        Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
+  media EventMedia[]
+
   @@index([nodeId, createdAt])
+}
+
+model Media {
+  id          String          @id @default(cuid())
+  kind        MediaKind?
+  mimeType    String
+  byteSize    Int
+  sha256      String          @unique
+  imageWidth  Int?
+  imageHeight Int?
+  provider    StorageProvider @default(database)
+  addedBy     AddedBy         @default(user)
+  data        Bytes
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  events EventMedia[]
+}
+
+model EventMedia {
+  id        String   @id @default(cuid())
+  eventId   String
+  mediaId   String
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, mediaId])
+  @@index([eventId])
+  @@index([mediaId])
 }
