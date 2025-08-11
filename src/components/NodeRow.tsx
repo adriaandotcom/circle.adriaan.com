@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import { PaperAirplaneIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
 import { type NodeType } from "@/lib/schemas";
@@ -24,6 +24,11 @@ export default function NodeRow({
     },
   });
   const uploadMedia = api.event.uploadMedia.useMutation({
+    onSuccess: async () => {
+      await utils.event.invalidate();
+    },
+  });
+  const deleteEvent = api.event.delete.useMutation({
     onSuccess: async () => {
       await utils.event.invalidate();
     },
@@ -189,7 +194,52 @@ export default function NodeRow({
                   setText(e.target.value);
                   setActiveIdx(0);
                 }}
-                onKeyDown={(e) => {
+                onKeyDown={async (e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    const cleanDescription = text.trim();
+                    if (!cleanDescription && files.length === 0) return;
+                    const storageDescription =
+                      convertToStorageFormat(cleanDescription);
+                    const created = await addEvent.mutateAsync({
+                      nodeId: node.id,
+                      description: storageDescription || "",
+                    });
+                    try {
+                      if (files.length) {
+                        const toBase64 = async (f: File): Promise<string> =>
+                          await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const result = String(reader.result ?? "");
+                              const idx = result.indexOf(",");
+                              resolve(
+                                idx >= 0 ? result.slice(idx + 1) : result
+                              );
+                            };
+                            reader.onerror = () => reject(reader.error);
+                            reader.readAsDataURL(f);
+                          });
+
+                        const payload = await Promise.all(
+                          files.map(async (f) => ({
+                            mimeType: f.type || "application/octet-stream",
+                            base64: await toBase64(f),
+                            filename: f.name,
+                          }))
+                        );
+                        await uploadMedia.mutateAsync({
+                          eventId: created.id,
+                          files: payload,
+                        });
+                      }
+                    } finally {
+                      setFiles([]);
+                      setText("");
+                      await events.refetch();
+                    }
+                    return;
+                  }
                   if (!mentionResults.length) return;
                   if (e.key === "ArrowDown") {
                     e.preventDefault();
@@ -310,8 +360,21 @@ export default function NodeRow({
                 key={e.id}
                 className="rounded-md border border-slate-200 p-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-300"
               >
-                <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {formatDate(e.createdAt as unknown as Date)}
+                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <span>{formatDate(e.createdAt as unknown as Date)}</span>
+                  <button
+                    type="button"
+                    className="text-slate-500 hover:text-red-500"
+                    title="Delete event"
+                    onClick={async () => {
+                      if (!confirm("Delete this event and its media?")) return;
+                      await deleteEvent.mutateAsync({
+                        id: e.id as unknown as string,
+                      });
+                    }}
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
                 </div>
                 <div className="whitespace-pre-wrap">
                   {linkify(e.description as unknown as string)}

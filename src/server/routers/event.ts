@@ -115,4 +115,27 @@ export const eventRouter = router({
 
       return { medias: createdMedias };
     }),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Collect media linked to this event so we can garbage collect unreferenced media after deletion
+      const links = await ctx.prisma.eventMedia.findMany({
+        where: { eventId: input.id },
+        select: { mediaId: true },
+      });
+      const mediaIds = links.map((l) => l.mediaId);
+
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.event.delete({ where: { id: input.id } });
+        if (mediaIds.length) {
+          // Delete media that are no longer linked to any event
+          await tx.media.deleteMany({
+            where: { id: { in: mediaIds }, events: { none: {} } },
+          });
+        }
+      });
+
+      return { ok: true };
+    }),
 });
