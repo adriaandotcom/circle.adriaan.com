@@ -31,6 +31,7 @@ export default function Home() {
     label: string;
     type: NodeType | null | undefined;
     color?: string | null;
+    imageMediaId?: string | null;
   }>;
   // events handled within NodeRow
 
@@ -58,6 +59,7 @@ export default function Home() {
         id: n.id,
         label: n.label,
         type: n.type ?? undefined,
+        imageMediaId: (n as any).imageMediaId ?? undefined,
       }));
     const neighborIds = new Set<string>([selectedNodeId]);
     allLinks.forEach((l) => {
@@ -66,7 +68,12 @@ export default function Home() {
     });
     return nodeItems
       .filter((n) => neighborIds.has(n.id))
-      .map((n) => ({ id: n.id, label: n.label, type: n.type ?? undefined }));
+      .map((n) => ({
+        id: n.id,
+        label: n.label,
+        type: n.type ?? undefined,
+        imageMediaId: (n as any).imageMediaId ?? undefined,
+      }));
   })();
 
   console.log(typeof fetchTwitterProfile);
@@ -99,6 +106,7 @@ export default function Home() {
             label: n.label,
             type: n.type,
             color: (n as any).color ?? null,
+            imageMediaId: (n as any).imageMediaId ?? null,
           }))}
           onSelect={(id) => setSelectedNodeId(id)}
         />

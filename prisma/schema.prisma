@@ -43,6 +43,9 @@ model Node {
   linksB Link[]  @relation("B")
   events Event[]
 
+  imageMediaId String?
+  image        Media?  @relation(fields: [imageMediaId], references: [id], onDelete: SetNull)
+
   @@unique([label, type])
 }
 
@@ -103,7 +106,8 @@ model Media {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  events EventMedia[]
+  events     EventMedia[]
+  nodeImages Node[]
 }
 
 model EventMedia {

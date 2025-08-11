@@ -395,7 +395,10 @@ export default function NodeRow({
                 <div className="whitespace-pre-wrap">
                   {linkify(e.description as unknown as string)}
                 </div>
-                <EventMediaList eventId={e.id as unknown as string} />
+                <EventMediaList
+                  nodeId={node.id}
+                  eventId={e.id as unknown as string}
+                />
               </li>
             ))}
           </ul>
@@ -405,7 +408,13 @@ export default function NodeRow({
   );
 }
 
-function EventMediaList({ eventId }: { eventId: string }) {
+function EventMediaList({
+  eventId,
+  nodeId,
+}: {
+  eventId: string;
+  nodeId: string;
+}) {
   const mediaQuery = api.event.mediaForEvent.useQuery({ eventId });
   const items = (mediaQuery.data ?? []) as Array<{
     id: string;
@@ -440,8 +449,34 @@ function EventMediaList({ eventId }: { eventId: string }) {
               {m.mimeType}
             </a>
           )}
+          <SetNodeImageButton nodeId={nodeId} mediaId={m.id} />
         </div>
       ))}
     </div>
+  );
+}
+
+function SetNodeImageButton({
+  nodeId,
+  mediaId,
+}: {
+  nodeId: string;
+  mediaId: string;
+}) {
+  const utils = api.useUtils();
+  const setImage = api.node.setImage.useMutation({
+    onSuccess: async () => {
+      await utils.node.list.invalidate();
+    },
+  });
+  return (
+    <button
+      className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white"
+      onClick={async () => {
+        await setImage.mutateAsync({ nodeId, mediaId });
+      }}
+    >
+      Set
+    </button>
   );
 }

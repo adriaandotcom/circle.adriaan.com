@@ -13,6 +13,7 @@ export type SvgNode = {
   label?: string;
   type?: NodeType;
   color?: string | null;
+  imageMediaId?: string;
 };
 export type SvgLink = { id?: string; source: string; target: string };
 
@@ -147,12 +148,25 @@ const SvgGraph = ({ nodes, links, dark, onSelect, selectedId }: Props) => {
                 onClick={() => onSelect?.(n.id)}
                 style={{ cursor: "pointer" }}
               >
-                <circle
-                  r={circleR}
-                  fill={circleFill}
-                  stroke={nodeStroke}
-                  strokeWidth={2}
-                />
+                {(n as any).imageMediaId ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <image
+                    href={`/api/media/${(n as any).imageMediaId}`}
+                    x={-14}
+                    y={-14}
+                    width={28}
+                    height={28}
+                    clipPath={`circle(14px at 14px 14px)`}
+                    preserveAspectRatio="xMidYMid slice"
+                  />
+                ) : (
+                  <circle
+                    r={circleR}
+                    fill={circleFill}
+                    stroke={nodeStroke}
+                    strokeWidth={2}
+                  />
+                )}
                 {(() => {
                   const size = 12;
                   const common = {

@@ -19,6 +19,21 @@ export const nodeRouter = router({
       });
     }),
 
+  setImage: publicProcedure
+    .input(
+      z.object({
+        nodeId: z.string().cuid(),
+        mediaId: z.string().cuid().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.node.update({
+        where: { id: input.nodeId },
+        data: { imageMediaId: input.mediaId },
+        select: { id: true, imageMediaId: true },
+      });
+    }),
+
   delete: publicProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(async ({ ctx, input }) => {

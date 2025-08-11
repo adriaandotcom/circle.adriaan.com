@@ -10,6 +10,7 @@ type NodeGridProps = {
     label: string;
     type?: NodeType | null;
     color?: string | null;
+    imageMediaId?: string | null;
   }>;
   onSelect?: (id: string) => void;
 };
@@ -42,6 +43,7 @@ const NodeCard = ({
     label: string;
     type?: NodeType | null;
     color?: string | null;
+    imageMediaId?: string | null;
   };
   onSelect?: (id: string) => void;
 }) => {
@@ -63,7 +65,16 @@ const NodeCard = ({
             : undefined
         }
       >
-        <PlaceholderAvatar />
+        {node.imageMediaId ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/media/${node.imageMediaId}`}
+            alt=""
+            className="h-16 w-16 rounded-full object-cover"
+          />
+        ) : (
+          <PlaceholderAvatar />
+        )}
       </div>
       <div className="line-clamp-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700 group-hover:text-slate-900 dark:text-slate-200 dark:group-hover:text-white">
         {node.label}
