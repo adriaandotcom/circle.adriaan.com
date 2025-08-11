@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NodeType as PrismaNodeType, type $Enums } from "@prisma/client";
 
-export const nodeTypeEnum = z.nativeEnum(PrismaNodeType);
+export const nodeTypeEnum = z.enum(PrismaNodeType);
 export type NodeType = $Enums.NodeType;
 
 export const createNodeInput = z.object({

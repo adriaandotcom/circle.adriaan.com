@@ -8,6 +8,7 @@ import AddNodeModal from "@/components/AddNodeModal";
 import { type NodeType } from "@/lib/schemas";
 import NodeRow from "@/components/NodeRow";
 import { Button } from "@/components/ui/button";
+import { fetchTwitterProfile } from "@/lib/twitter";
 
 export default function Home() {
   const utils = api.useUtils();
@@ -67,6 +68,8 @@ export default function Home() {
       .filter((n) => neighborIds.has(n.id))
       .map((n) => ({ id: n.id, label: n.label, type: n.type ?? undefined }));
   })();
+
+  console.log(typeof fetchTwitterProfile);
 
   const graphLinks: SvgLink[] = (() => {
     if (!selectedNodeId) return allLinks;

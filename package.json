@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node -r dotenv/config node_modules/.bin/next dev --turbopack",
+    "build": "node -r dotenv/config node_modules/.bin/next build",
+    "start": "node -r dotenv/config node_modules/.bin/next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -37,6 +37,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "typescript": "^5"

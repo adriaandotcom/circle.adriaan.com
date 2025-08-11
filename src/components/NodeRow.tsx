@@ -62,6 +62,14 @@ export default function NodeRow({
       .slice(0, 8);
   }, [mentionQuery, nodeOptions]);
 
+  // Convert clean mentions @[name] to storage format @[name](id)
+  const convertToStorageFormat = (cleanText: string): string => {
+    return cleanText.replace(/@\[([^\]]+)\]/g, (match, label) => {
+      const node = nodeOptions.find((n) => n.label === label);
+      return node ? `@[${label}](${node.id})` : match;
+    });
+  };
+
   const formatDate = (date: Date) =>
     new Intl.DateTimeFormat("en-NL", {
       year: "numeric",
@@ -107,7 +115,7 @@ export default function NodeRow({
             }}
             className="underline text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
           >
-            {mentionLabel}
+            @{mentionLabel}
           </a>
         );
       } else nodes.push(full);
@@ -192,7 +200,7 @@ export default function NodeRow({
                       const suffix = text.slice(caretPos());
                       const replacedPrefix = prefix.replace(
                         /(^|\s)@([^@\n\r\t\f]*)$/,
-                        `$1@[${mLabel}](${mId})`
+                        `$1@[${mLabel}]`
                       );
                       const next = `${replacedPrefix}${suffix}`;
                       setText(next);
@@ -218,7 +226,7 @@ export default function NodeRow({
                         const suffix = text.slice(caretPos());
                         const replacedPrefix = prefix.replace(
                           /(^|\s)@([^@\n\r\t\f]*)$/,
-                          `$1@[${opt.label}](${opt.id})`
+                          `$1@[${opt.label}]`
                         );
                         const next = `${replacedPrefix}${suffix}`;
                         setText(next);
@@ -233,9 +241,14 @@ export default function NodeRow({
             </div>
             <Button
               onClick={async () => {
-                const description = text.trim();
-                if (!description) return;
-                await addEvent.mutateAsync({ nodeId: node.id, description });
+                const cleanDescription = text.trim();
+                if (!cleanDescription) return;
+                const storageDescription =
+                  convertToStorageFormat(cleanDescription);
+                await addEvent.mutateAsync({
+                  nodeId: node.id,
+                  description: storageDescription,
+                });
                 setText("");
                 await events.refetch();
               }}
