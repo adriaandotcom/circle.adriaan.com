@@ -7,6 +7,7 @@ import NodeGrid from "@/components/NodeGrid";
 import AddNodeModal from "@/components/AddNodeModal";
 import { type NodeType } from "@/lib/schemas";
 import NodeRow from "@/components/NodeRow";
+import NodeAutocomplete from "@/components/NodeAutocomplete";
 import { Button } from "@/components/ui/button";
 import { fetchTwitterProfile } from "@/lib/twitter";
 
@@ -197,6 +198,14 @@ function NodeDetailModal({
 }) {
   if (!open) return null;
   const [tab, setTab] = useState<"events" | "links" | "settings">("events");
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onOpenChange]);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4 min-h-full"
@@ -256,6 +265,7 @@ function LinksTab({ nodeId }: { nodeId: string }) {
   const utils = api.useUtils();
   const nodes = api.node.list.useQuery();
   const links = api.link.forNode.useQuery({ nodeId });
+  const allRoles = api.link.roles.useQuery();
   const create = api.link.create.useMutation({
     onSuccess: async () => {
       await utils.link.forNode.invalidate({ nodeId });
@@ -284,24 +294,25 @@ function LinksTab({ nodeId }: { nodeId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        <select
-          className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-          value={otherId}
-          onChange={(e) => setOtherId(e.target.value)}
-        >
-          <option value="">Select member…</option>
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <input
-          className="w-40 rounded-md border border-slate-300 bg-white p-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-          placeholder="Role (optional)"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        />
+        <div className="w-full">
+          <NodeAutocomplete
+            options={options}
+            value={otherId}
+            onChange={(id) => setOtherId(id)}
+            placeholder="Select member…"
+          />
+        </div>
+        <div className="w-40">
+          <NodeAutocomplete
+            options={(
+              (allRoles.data ?? []) as Array<{ id: string; name: string }>
+            ).map((r) => ({ id: r.name, label: r.name }))}
+            value={role}
+            onChange={(v) => setRole(v)}
+            placeholder="Role (optional)"
+            freeText
+          />
+        </div>
         <button
           className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 whitespace-nowrap"
           disabled={!otherId}

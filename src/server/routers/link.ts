@@ -10,6 +10,13 @@ export const linkRouter = router({
     });
   }),
 
+  roles: publicProcedure.query(async ({ ctx }) => {
+    const roles = await ctx.prisma.role.findMany({
+      select: { id: true, name: true },
+    });
+    return roles;
+  }),
+
   create: publicProcedure
     .input(createLinkInput)
     .mutation(async ({ ctx, input }) => {
