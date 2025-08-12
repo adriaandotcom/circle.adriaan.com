@@ -32,8 +32,21 @@ export default function Home() {
   });
 
   const [addOpen, setAddOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterRoles, setFilterRoles] = useState<string[]>([]);
+  const tagList = api.event.tags.useQuery();
+  const roleList = api.link.roles.useQuery();
+  const searchNodes = api.node.search.useQuery({
+    q: query || undefined,
+    tags: filterTags,
+    roles: filterRoles,
+    archived: showArchived ? undefined : false,
+  });
   const nodeItems = (
-    (nodes.data ?? []) as Array<{
+    ((query || filterTags.length || filterRoles.length
+      ? searchNodes.data
+      : nodes.data) ?? []) as Array<{
       id: string;
       label: string;
       type: NodeType | null | undefined;
@@ -114,12 +127,85 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-8">
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            All members
-          </h1>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1">
+            <input
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+              placeholder="Filter by name, event content…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="w-40">
+            <NodeAutocomplete
+              options={(
+                (tagList.data ?? []) as Array<{ id: string; name: string }>
+              ).map((t) => ({ id: t.name, label: `#${t.name}` }))}
+              value={""}
+              onChange={() => {}}
+              onCommit={(v) =>
+                setFilterTags((prev) =>
+                  prev.includes(v) ? prev : [...prev, v]
+                )
+              }
+              placeholder="#tag"
+              freeText
+            />
+          </div>
+          <div className="w-40">
+            <NodeAutocomplete
+              options={(
+                (roleList.data ?? []) as Array<{ id: string; name: string }>
+              ).map((r) => ({ id: r.name, label: r.name }))}
+              value={""}
+              onChange={() => {}}
+              onCommit={(v) =>
+                setFilterRoles((prev) =>
+                  prev.includes(v) ? prev : [...prev, v]
+                )
+              }
+              placeholder="role"
+              freeText
+            />
+          </div>
           <Button onClick={() => setAddOpen(true)}>Add</Button>
         </div>
+        {filterTags.length || filterRoles.length ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {filterTags.map((t) => (
+              <span
+                key={`t-${t}`}
+                className="relative rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300"
+              >
+                #{t}
+                <button
+                  className="ml-1 rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-700"
+                  onClick={() =>
+                    setFilterTags((prev) => prev.filter((x) => x !== t))
+                  }
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {filterRoles.map((r) => (
+              <span
+                key={`r-${r}`}
+                className="relative rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300"
+              >
+                {r}
+                <button
+                  className="ml-1 rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-700"
+                  onClick={() =>
+                    setFilterRoles((prev) => prev.filter((x) => x !== r))
+                  }
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <NodeGrid
           nodes={nodeItems.map((n) => ({
             id: n.id,

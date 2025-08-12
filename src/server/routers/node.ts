@@ -11,6 +11,74 @@ export const nodeRouter = router({
     return ctx.prisma.node.findMany({ orderBy: { createdAt: "desc" } });
   }),
 
+  search: publicProcedure
+    .input(
+      z.object({
+        q: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        roles: z.array(z.string()).optional(),
+        archived: z.boolean().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const normalizedTags = (input.tags ?? [])
+        .map((t) =>
+          t
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "")
+        )
+        .filter(Boolean);
+      const normalizedRoles = (input.roles ?? [])
+        .map((r) => r.trim())
+        .filter(Boolean);
+
+      const where: any = {};
+      if (typeof input.archived === "boolean") where.archived = input.archived;
+
+      const or: any[] = [];
+      if (input.q && input.q.trim()) {
+        or.push({ label: { contains: input.q, mode: "insensitive" } });
+        or.push({
+          events: {
+            some: { description: { contains: input.q, mode: "insensitive" } },
+          },
+        });
+      }
+      if (or.length) where.OR = or;
+
+      const and: any[] = [];
+      if (normalizedTags.length) {
+        and.push({
+          events: {
+            some: { tags: { some: { name: { in: normalizedTags } } } },
+          },
+        });
+      }
+      if (normalizedRoles.length) {
+        and.push({
+          OR: [
+            {
+              linksA: {
+                some: { roles: { some: { name: { in: normalizedRoles } } } },
+              },
+            },
+            {
+              linksB: {
+                some: { roles: { some: { name: { in: normalizedRoles } } } },
+              },
+            },
+          ],
+        });
+      }
+      if (and.length) where.AND = and;
+
+      return ctx.prisma.node.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      });
+    }),
+
   create: publicProcedure
     .input(createNodeInput)
     .mutation(async ({ ctx, input }) => {
