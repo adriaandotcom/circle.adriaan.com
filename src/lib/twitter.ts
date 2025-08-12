@@ -221,8 +221,6 @@ export const fetchTwitterProfile = async (
 export const fetchTwitterProfileWithEnvVars = async (
   handle: string
 ): Promise<TwitterProfile | null> => {
-  console.log(process.env);
-
   const bearerToken = process.env.X_ADRIAAN_BEARER;
   const csrfToken = process.env.X_ADRIAAN_CSRF_TOKEN;
   const cookie = process.env.X_ADRIAAN_COOKIE;

@@ -87,6 +87,7 @@ Input: ${text}`,
             label: nodeLabel,
             colorHexLight: light,
             colorHexDark: dark,
+            addedBy: "ai",
           },
           select: { id: true },
         });
@@ -96,7 +97,12 @@ Input: ${text}`,
 
       // Create event with original text
       const event = await ctx.prisma.event.create({
-        data: { nodeId: nodeId!, type: "note", description: text },
+        data: {
+          nodeId: nodeId!,
+          type: "note",
+          description: text,
+          addedBy: "ai",
+        },
         select: { id: true },
       });
 

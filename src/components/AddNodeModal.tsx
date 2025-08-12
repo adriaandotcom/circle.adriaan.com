@@ -18,7 +18,9 @@ const AddNodeModal = ({
   onCreate: (label: string, type: NodeType, color?: string) => Promise<void>;
   isCreating?: boolean;
 }) => {
-  const [tab, setTab] = useState<"automatic" | "manual">("automatic");
+  const [tab, setTab] = useState<"automatic" | "manual" | "history">(
+    "automatic"
+  );
   const [label, setLabel] = useState("");
   const [type, setType] = useState<NodeType>("person");
   const [color, setColor] = useState<string>("#7c3aed");
@@ -119,6 +121,7 @@ const AddNodeModal = ({
           {[
             { k: "automatic", label: "Automatic" },
             { k: "manual", label: "Manual" },
+            { k: "history", label: "History" },
           ].map((t) => (
             <button
               key={t.k}
@@ -210,6 +213,12 @@ const AddNodeModal = ({
           </div>
         ) : null}
 
+        {tab === "history" ? (
+          <div className="space-y-3">
+            <HistoryList />
+          </div>
+        ) : null}
+
         <div className="mt-6 flex justify-end gap-2">
           <Button
             variant="secondary"
@@ -242,3 +251,52 @@ const AddNodeModal = ({
 };
 
 export default AddNodeModal;
+
+function HistoryList() {
+  const itemsQuery = api.event.recentAi.useQuery();
+  const utils = api.useUtils();
+  const del = api.event.delete.useMutation({
+    onSuccess: async () => {
+      await utils.event.recentAi.invalidate();
+    },
+  });
+  const items = (itemsQuery.data ?? []) as Array<{
+    id: string;
+    createdAt: string | Date;
+    description?: string | null;
+    nodeId?: string | null;
+    nodeLabel?: string | null;
+  }>;
+  if (!items.length)
+    return (
+      <div className="text-sm text-slate-500 dark:text-slate-400">
+        No recent AI additions.
+      </div>
+    );
+  return (
+    <ul className="space-y-2">
+      {items.map((e) => (
+        <li
+          key={e.id}
+          className="flex items-start justify-between rounded border border-slate-200 p-2 text-sm dark:border-slate-700"
+        >
+          <div className="mr-2">
+            <div className="font-medium">{e.nodeLabel ?? "(unknown)"}</div>
+            <div className="text-slate-600 dark:text-slate-300 line-clamp-2">
+              {e.description}
+            </div>
+          </div>
+          <button
+            className="rounded bg-red-600 px-2 py-1 text-white"
+            onClick={async () => {
+              if (!confirm("Delete this AI-added item?")) return;
+              await del.mutateAsync({ id: e.id });
+            }}
+          >
+            Delete
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}

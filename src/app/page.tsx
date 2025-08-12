@@ -109,7 +109,10 @@ export default function Home() {
       }));
   })();
 
-  console.log(typeof fetchTwitterProfile);
+  const aiEvents = api.event.list.useQuery(
+    { nodeId: selectedNodeId ?? "" },
+    { enabled: !!selectedNodeId }
+  );
 
   const graphLinks: SvgLink[] = (() => {
     if (!selectedNodeId) return allLinks;

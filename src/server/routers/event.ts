@@ -16,6 +16,27 @@ export const eventRouter = router({
     });
   }),
 
+  recentAi: publicProcedure.query(async ({ ctx }) => {
+    const items = await ctx.prisma.event.findMany({
+      where: { addedBy: "ai" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        createdAt: true,
+        description: true,
+        node: { select: { id: true, label: true } },
+      },
+    });
+    return items.map((e) => ({
+      id: e.id,
+      createdAt: e.createdAt,
+      description: e.description,
+      nodeId: e.node?.id ?? null,
+      nodeLabel: e.node?.label ?? null,
+    }));
+  }),
+
   list: publicProcedure
     .input(z.object({ nodeId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
@@ -40,6 +61,7 @@ export const eventRouter = router({
           nodeId: input.nodeId,
           type: "note",
           description: input.description ?? null,
+          addedBy: "user",
         },
         select: { id: true, description: true },
       });

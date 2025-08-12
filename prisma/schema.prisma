@@ -29,6 +29,7 @@ enum StorageProvider {
 enum AddedBy {
   user
   system
+  ai
 }
 
 model Node {
@@ -40,6 +41,7 @@ model Node {
   archived      Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  addedBy       AddedBy   @default(user)
 
   linksA Link[]  @relation("A")
   linksB Link[]  @relation("B")
@@ -87,6 +89,7 @@ model Event {
   description String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  addedBy     AddedBy  @default(user)
   node        Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
   media EventMedia[]
