@@ -30,6 +30,12 @@ export default function Home() {
       await utils.link.invalidate();
     },
   });
+  const ingest = api.ingest.process.useMutation({
+    onSuccess: async () => {
+      await utils.node.list.invalidate();
+      await utils.event.invalidate();
+    },
+  });
 
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -135,6 +141,20 @@ export default function Home() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <div className="mt-2 flex gap-2">
+              <input
+                className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+                placeholder="Smart input: e.g. I met @https://x.com/jack yesterday …"
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter") {
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (!val) return;
+                    await ingest.mutateAsync({ text: val });
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }}
+              />
+            </div>
           </div>
           <div className="w-40">
             <NodeAutocomplete
