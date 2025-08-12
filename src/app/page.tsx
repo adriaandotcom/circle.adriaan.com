@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
 import SvgGraph, { type SvgNode, type SvgLink } from "@/components/SvgGraph";
 import CreateLinkForm from "@/components/CreateLinkForm";
@@ -13,11 +14,10 @@ import { fetchTwitterProfile } from "@/lib/twitter";
 
 export default function Home() {
   const utils = api.useUtils();
-  const params =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : null;
-  const showArchived = params?.get("archived") === "1";
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const showArchived = searchParams?.get("archived") === "1";
   const nodes = api.node.list.useQuery();
   const linksQuery = api.link.list.useQuery();
   const createNode = api.node.create.useMutation({
@@ -125,11 +125,14 @@ export default function Home() {
           <button
             className="text-sm text-slate-600 underline hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             onClick={() => {
-              const url = new URL(window.location.href);
-              if (showArchived) url.searchParams.delete("archived");
-              else url.searchParams.set("archived", "1");
-              window.history.replaceState(null, "", url.toString());
-              utils.node.list.invalidate();
+              const params = new URLSearchParams(searchParams ?? undefined);
+              if (showArchived) params.delete("archived");
+              else params.set("archived", "1");
+              const nextUrl = params.toString()
+                ? `${pathname}?${params.toString()}`
+                : pathname;
+              router.replace(nextUrl, { scroll: false });
+              void utils.node.list.invalidate();
             }}
           >
             {showArchived ? "Hide archived" : "Show archived"}
@@ -419,7 +422,7 @@ function SettingsTab({
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div
-          className="flex w-1/2 items-center justify-between rounded-lg border p-3"
+          className="flex w-1/2 items-center justify-between rounded-lg border p-3 bg-white text-slate-900 shadow-sm dark:bg-white"
           style={{ borderColor: light }}
         >
           <div className="flex items-center gap-3">
@@ -427,9 +430,7 @@ function SettingsTab({
               className="h-8 w-8 rounded"
               style={{ backgroundColor: light }}
             />
-            <div className="text-xs text-slate-600 dark:text-slate-300">
-              Light color
-            </div>
+            <div className="text-xs text-slate-600">Light color</div>
           </div>
           <input
             type="color"
@@ -455,7 +456,7 @@ function SettingsTab({
           </button>
         </div>
         <div
-          className="flex w-1/2 items-center justify-between rounded-lg border p-3"
+          className="flex w-1/2 items-center justify-between rounded-lg border p-3 bg-slate-900 text-white shadow-sm dark:bg-slate-900"
           style={{ borderColor: dark }}
         >
           <div className="flex items-center gap-3">
@@ -463,9 +464,7 @@ function SettingsTab({
               className="h-8 w-8 rounded"
               style={{ backgroundColor: dark }}
             />
-            <div className="text-xs text-slate-600 dark:text-slate-300">
-              Dark color
-            </div>
+            <div className="text-xs text-slate-300">Dark color</div>
           </div>
           <input
             type="color"
