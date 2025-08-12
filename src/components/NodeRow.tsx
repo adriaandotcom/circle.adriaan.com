@@ -7,6 +7,7 @@ import { PaperAirplaneIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
 import { type NodeType } from "@/lib/schemas";
+import NodeAutocomplete from "@/components/NodeAutocomplete";
 
 export default function NodeRow({
   node,
@@ -28,6 +29,11 @@ export default function NodeRow({
     },
   });
   const uploadMedia = api.event.uploadMedia.useMutation({
+    onSuccess: async () => {
+      await utils.event.invalidate();
+    },
+  });
+  const addTags = api.event.addTags.useMutation({
     onSuccess: async () => {
       await utils.event.invalidate();
     },
@@ -60,6 +66,27 @@ export default function NodeRow({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [text, setText] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
+  const [showTags, setShowTags] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState<string>("");
+  const allTags = api.event.tags.useQuery();
+  const tagOptions = useMemo(
+    () =>
+      ((allTags.data ?? []) as Array<{ id: string; name: string }>).map(
+        (t) => ({ id: t.name, label: t.name })
+      ),
+    [allTags.data]
+  );
+  const addTag = (name: string) => {
+    const v = name.trim();
+    if (!v) return;
+    setSelectedTags((prev) =>
+      prev.includes(v) ? prev : [...prev, v].slice(0, 20)
+    );
+    setTagDraft("");
+  };
+  const removeTag = (name: string) =>
+    setSelectedTags((prev) => prev.filter((t) => t !== name));
 
   const caretPos = () => textareaRef.current?.selectionStart ?? text.length;
   const prefixUntilCaret = () => text.slice(0, caretPos());
@@ -325,6 +352,39 @@ export default function NodeRow({
             multiple
             files={files}
             onChange={(f) => setFiles(f)}
+            leftSlot={
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="text-xs text-slate-500 hover:text-slate-300"
+                  onClick={() => setShowTags((v) => !v)}
+                  title="Add tags"
+                >
+                  #tags
+                </button>
+                {showTags ? (
+                  <div className="w-40">
+                    <NodeAutocomplete
+                      options={tagOptions}
+                      value={tagDraft}
+                      onChange={(v: string) => setTagDraft(v)}
+                      onCommit={(v: string) => addTag(v)}
+                      placeholder="Add tag…"
+                      freeText
+                    />
+                    {tagDraft && (
+                      <button
+                        type="button"
+                        className="mt-1 rounded border px-2 py-0.5 text-[10px]"
+                        onClick={() => addTag(tagDraft)}
+                      >
+                        Add "{tagDraft}"
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            }
             rightSlot={
               <button
                 type="button"
@@ -339,6 +399,12 @@ export default function NodeRow({
                     description: storageDescription || "",
                   });
                   try {
+                    if (selectedTags.length) {
+                      await addTags.mutateAsync({
+                        eventId: created.id,
+                        tags: selectedTags,
+                      });
+                    }
                     if (files.length) {
                       const toBase64 = async (f: File): Promise<string> =>
                         await new Promise((resolve, reject) => {
@@ -367,6 +433,8 @@ export default function NodeRow({
                   } finally {
                     setFiles([]);
                     setText("");
+                    setSelectedTags([]);
+                    setShowTags(false);
                     await events.refetch();
                   }
                 }}
@@ -376,6 +444,26 @@ export default function NodeRow({
               </button>
             }
           />
+
+          {selectedTags.length > 0 ? (
+            <div className="-mt-1 flex flex-wrap gap-2">
+              {selectedTags.map((t) => (
+                <span
+                  key={t}
+                  className="relative rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300"
+                >
+                  #{t}
+                  <button
+                    type="button"
+                    className="ml-1 rounded bg-slate-200 px-1 text-[10px] dark:bg-slate-700"
+                    onClick={() => removeTag(t)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           <ul className="space-y-2">
             {(events.data ?? []).map((e) => (

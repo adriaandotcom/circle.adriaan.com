@@ -90,6 +90,7 @@ model Event {
   node        Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
 
   media EventMedia[]
+  tags  Tag[]
 
   @@index([nodeId, createdAt])
 }
@@ -125,4 +126,14 @@ model EventMedia {
   @@unique([eventId, mediaId])
   @@index([eventId])
   @@index([mediaId])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
 }

@@ -9,6 +9,7 @@ export type FileUploadProps = {
   onChange?: (files: File[]) => void;
   rightSlot?: React.ReactNode;
   files?: File[];
+  leftSlot?: React.ReactNode;
 };
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -17,6 +18,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onChange,
   rightSlot,
   files: filesProp,
+  leftSlot,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [internalFiles, setInternalFiles] = useState<File[]>([]);
@@ -54,6 +56,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         >
           <PhotoIcon className="h-5 w-5" />
         </button>
+        {leftSlot ? (
+          <div className="ml-2 flex items-center gap-2">{leftSlot}</div>
+        ) : null}
         <div className="ml-4 flex items-center">{rightSlot}</div>
       </div>
       {files.length > 0 ? (

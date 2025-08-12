@@ -7,6 +7,13 @@ import imageSize from "image-size";
 import { fetchTwitterProfileWithEnvVars } from "@/lib/twitter";
 
 export const eventRouter = router({
+  tags: publicProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.tag.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    });
+  }),
+
   list: publicProcedure
     .input(z.object({ nodeId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
@@ -147,6 +154,38 @@ export const eventRouter = router({
       })();
 
       return { id: created.id };
+    }),
+
+  addTags: publicProcedure
+    .input(
+      z.object({
+        eventId: z.string().cuid(),
+        tags: z.array(z.string().min(1)).min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const uniqueNames = Array.from(
+        new Set(input.tags.map((t) => t.trim()).filter(Boolean))
+      );
+      const tagIds: string[] = [];
+      for (const name of uniqueNames) {
+        const slug = name
+          .toLocaleLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-+|-+$)/g, "");
+        const tag = await ctx.prisma.tag.upsert({
+          where: { slug },
+          update: { name },
+          create: { slug, name },
+          select: { id: true },
+        });
+        tagIds.push(tag.id);
+      }
+      await ctx.prisma.event.update({
+        where: { id: input.eventId },
+        data: { tags: { connect: tagIds.map((id) => ({ id })) } },
+      });
+      return { ok: true };
     }),
 
   mediaForEvent: publicProcedure

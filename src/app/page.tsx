@@ -48,6 +48,7 @@ export default function Home() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
+  const selectedNode = nodeItems.find((n) => n.id === selectedNodeId) || null;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -57,6 +58,10 @@ export default function Home() {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  useEffect(() => {
+    if (selectedNodeId && !selectedNode) setSelectedNodeId(null);
+  }, [selectedNodeId, selectedNode]);
 
   const allLinks: SvgLink[] = (linksQuery.data ?? [])
     .map((l: any) => ({
@@ -158,9 +163,9 @@ export default function Home() {
         isCreating={createNode.isPending}
       />
 
-      {selectedNodeId ? (
+      {selectedNode ? (
         <NodeDetailModal
-          node={nodeItems.find((n) => n.id === selectedNodeId)!}
+          node={selectedNode as any}
           open={!!selectedNodeId}
           onOpenChange={(o) => !o && setSelectedNodeId(null)}
         />
@@ -170,6 +175,14 @@ export default function Home() {
         <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
           Graph
         </h2>
+        <div>
+          <CreateLinkForm
+            nodes={nodeItems.map((n) => ({ id: n.id, label: n.label }))}
+            onCreate={async (na, nb, role) => {
+              await createLink.mutateAsync({ role, nodeIds: [na, nb] });
+            }}
+          />
+        </div>
         <div className="w-full aspect-square rounded-md border border-slate-200 p-2 dark:border-slate-700">
           <SvgGraph
             nodes={graphNodes}
@@ -193,25 +206,6 @@ export default function Home() {
             </Button>
           </div>
         ) : null}
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
-          Create link
-        </h2>
-        <CreateLinkForm
-          nodes={nodeItems.map((n) => ({ id: n.id, label: n.label }))}
-          onCreate={async (na, nb, role) => {
-            await createLink.mutateAsync({ role, nodeIds: [na, nb] });
-          }}
-        />
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium text-slate-800 dark:text-slate-100">
-          Links
-        </h2>
-        <LinksList />
       </section>
     </main>
   );
@@ -519,57 +513,5 @@ function SettingsTab({
         Archived nodes are hidden by default; use "Show archived" to view them.
       </div>
     </div>
-  );
-}
-
-function LinksList() {
-  const utils = api.useUtils();
-  const links = api.link.list.useQuery();
-  const del = api.link.delete.useMutation({
-    onSuccess: async () => {
-      await utils.link.invalidate();
-    },
-  });
-  const items = (links.data ?? []) as Array<{
-    id: string;
-    roles?: Array<{ id: string; name: string }>;
-    nodeA: { id: string; label: string };
-    nodeB: { id: string; label: string };
-  }>;
-  return (
-    <ul className="space-y-2">
-      {items.map((l) => (
-        <li
-          key={l.id}
-          className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700"
-        >
-          <span className="flex items-center gap-2">
-            {l.nodeA.label} ↔ {l.nodeB.label}
-            {l.roles && l.roles.length > 0 && (
-              <span className="mr-auto ml-2 flex flex-wrap gap-1">
-                {l.roles.map((r) => (
-                  <span
-                    key={r.id}
-                    className="rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-600 dark:border-slate-600 dark:text-slate-300"
-                  >
-                    {r.name}
-                  </span>
-                ))}
-              </span>
-            )}
-          </span>
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              if (confirm("Are you sure you want to delete this link?")) {
-                await del.mutateAsync({ id: l.id });
-              }
-            }}
-          >
-            Delete
-          </Button>
-        </li>
-      ))}
-    </ul>
   );
 }

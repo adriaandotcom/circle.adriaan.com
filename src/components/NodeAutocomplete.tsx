@@ -11,6 +11,7 @@ type Props = {
   onChange: (id: string) => void;
   placeholder?: string;
   freeText?: boolean;
+  onCommit?: (id: string) => void;
 };
 
 const NodeAutocomplete = ({
@@ -19,6 +20,7 @@ const NodeAutocomplete = ({
   onChange,
   placeholder,
   freeText,
+  onCommit,
 }: Props) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -54,6 +56,7 @@ const NodeAutocomplete = ({
 
   const commit = (opt: Option) => {
     onChange(opt.id);
+    if (onCommit) onCommit(opt.id);
     setQuery("");
     setOpen(false);
   };
@@ -101,6 +104,15 @@ const NodeAutocomplete = ({
             e.preventDefault();
             const opt = filtered[activeIdx];
             if (opt) commit(opt);
+            else if (freeText) {
+              const q = query.trim();
+              if (q) {
+                onChange(q);
+                if (onCommit) onCommit(q);
+                setQuery("");
+                setOpen(false);
+              }
+            }
           } else if (e.key === "Escape") setOpen(false);
         }}
       />

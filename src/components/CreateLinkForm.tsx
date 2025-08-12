@@ -4,6 +4,7 @@ import NodeAutocomplete, {
   type Option as NodeOption,
 } from "@/components/NodeAutocomplete";
 import { useState } from "react";
+import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 
 export default function CreateLinkForm({
@@ -16,6 +17,7 @@ export default function CreateLinkForm({
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const [role, setRole] = useState("");
+  const allRoles = api.link.roles.useQuery();
 
   const options: NodeOption[] = nodes.map((n) => ({
     id: n.id,
@@ -37,7 +39,9 @@ export default function CreateLinkForm({
         placeholder="Select node"
       />
       <NodeAutocomplete
-        options={[]}
+        options={(
+          (allRoles.data ?? []) as Array<{ id: string; name: string }>
+        ).map((r) => ({ id: r.name, label: r.name }))}
         value={role}
         onChange={setRole}
         placeholder="Role (optional)"
