@@ -62,6 +62,11 @@ export const linkRouter = router({
     .query(async ({ ctx, input }) => {
       return ctx.prisma.link.findMany({
         where: { OR: [{ nodeAId: input.nodeId }, { nodeBId: input.nodeId }] },
+        include: {
+          nodeA: { select: { id: true, label: true } },
+          nodeB: { select: { id: true, label: true } },
+          roles: true,
+        },
       });
     }),
 
