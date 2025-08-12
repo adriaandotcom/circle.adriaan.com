@@ -47,7 +47,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         multiple={multiple}
         onChange={handleChange}
       />
-      <div className="flex items-center justify-between w-full">
+      <div className="flex items-center w-full">
         <button
           type="button"
           onClick={openPicker}
@@ -59,7 +59,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         {leftSlot ? (
           <div className="ml-2 flex items-center gap-2">{leftSlot}</div>
         ) : null}
-        <div className="ml-4 flex items-center">{rightSlot}</div>
+        <div className="ml-auto flex items-center">{rightSlot}</div>
       </div>
       {files.length > 0 ? (
         <div className="flex flex-wrap gap-2">

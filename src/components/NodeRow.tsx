@@ -3,7 +3,8 @@
 import React, { useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { PaperAirplaneIcon, TrashIcon } from "@heroicons/react/24/solid";
+import { PaperAirplaneIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { HashtagIcon } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
 import { type NodeType } from "@/lib/schemas";
@@ -221,7 +222,7 @@ export default function NodeRow({
               <Textarea
                 ref={textareaRef}
                 className="min-h-[60px] w-full"
-                placeholder="Add a note, place, link, or @mention..."
+                placeholder="Add a note, link, #tag, or @mention..."
                 id={`event-${node.id}`}
                 value={text}
                 onChange={(e) => {
@@ -356,11 +357,12 @@ export default function NodeRow({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="text-xs text-slate-500 hover:text-slate-300"
+                  className="text-slate-500 hover:text-slate-300"
                   onClick={() => setShowTags((v) => !v)}
                   title="Add tags"
+                  aria-label="Add tags"
                 >
-                  #tags
+                  <HashtagIcon className="h-5 w-5" />
                 </button>
                 {showTags ? (
                   <div className="w-40">
@@ -439,7 +441,6 @@ export default function NodeRow({
                   }
                 }}
               >
-                <span>Save</span>
                 <PaperAirplaneIcon className="h-5 w-5" />
               </button>
             }
@@ -487,6 +488,19 @@ export default function NodeRow({
                     <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
+                {Array.isArray((e as any).tags) &&
+                (e as any).tags.length > 0 ? (
+                  <div className="mb-1 flex flex-wrap gap-1">
+                    {(e as any).tags.map((t: { id: string; name: string }) => (
+                      <span
+                        key={t.id}
+                        className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300"
+                      >
+                        #{t.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="whitespace-pre-wrap">
                   {linkify(e.description as unknown as string)}
                 </div>

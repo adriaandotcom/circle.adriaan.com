@@ -20,7 +20,13 @@ export const eventRouter = router({
       return ctx.prisma.event.findMany({
         where: { nodeId: input.nodeId },
         orderBy: { createdAt: "desc" },
-        select: { id: true, description: true, createdAt: true, type: true },
+        select: {
+          id: true,
+          description: true,
+          createdAt: true,
+          type: true,
+          tags: { select: { id: true, name: true } },
+        },
       });
     }),
 
