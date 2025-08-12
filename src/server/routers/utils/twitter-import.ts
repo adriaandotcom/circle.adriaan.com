@@ -5,6 +5,7 @@ import {
   fetchTweetImageUrlsWithEnvVars,
 } from "@/lib/twitter";
 import type { PrismaClient } from "@prisma/client";
+import { maybeSetNodeAvatar } from "@/server/routers/utils/node-avatar";
 
 export const attachTwitterAssetsIfAny = async (
   prisma: PrismaClient,
@@ -53,11 +54,13 @@ export const attachTwitterAssetsIfAny = async (
               data: bytes,
             },
           });
-          await prisma.eventMedia.upsert({
+          const link = await prisma.eventMedia.upsert({
             where: { eventId_mediaId: { eventId, mediaId: media.id } },
             update: { visible: true },
             create: { eventId, mediaId: media.id, visible: true },
           });
+          // Also set avatar if node has none yet
+          await maybeSetNodeAvatar(prisma, eventId, media.id);
           await prisma.event.update({
             where: { id: eventId },
             data: { updatedAt: new Date() },
@@ -104,11 +107,12 @@ export const attachTwitterAssetsIfAny = async (
             data: bytes,
           },
         });
-        await prisma.eventMedia.upsert({
+        const link = await prisma.eventMedia.upsert({
           where: { eventId_mediaId: { eventId, mediaId: media.id } },
           update: { visible: true },
           create: { eventId, mediaId: media.id, visible: true },
         });
+        await maybeSetNodeAvatar(prisma, eventId, media.id);
       }
     }
   } catch {}

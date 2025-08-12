@@ -3,6 +3,7 @@ import { z } from "zod";
 import { uploadEventMediaInput, createEventInput } from "@/lib/schemas";
 import { fetchTweetImageUrlsWithEnvVars } from "@/lib/twitter";
 import { attachTwitterAssetsIfAny } from "@/server/routers/utils/twitter-import";
+import { maybeSetNodeAvatar } from "@/server/routers/utils/node-avatar";
 import crypto from "node:crypto";
 import imageSize from "image-size";
 import { fetchTwitterProfileWithEnvVars } from "@/lib/twitter";
@@ -160,13 +161,18 @@ export const eventRouter = router({
           },
         });
 
-        await ctx.prisma.eventMedia.upsert({
+        const link = await ctx.prisma.eventMedia.upsert({
           where: {
             eventId_mediaId: { eventId: input.eventId, mediaId: media.id },
           },
           update: { visible: true },
           create: { eventId: input.eventId, mediaId: media.id, visible: true },
         });
+
+        // Auto-set avatar if node has none yet
+        if (file.mimeType.startsWith("image/")) {
+          void maybeSetNodeAvatar(ctx.prisma as any, input.eventId, media.id);
+        }
 
         createdMedias.push({ id: media.id });
       }

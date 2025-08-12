@@ -183,8 +183,6 @@ export const fetchTwitterProfile = async (
     const userResult = data.data?.user?.result;
     const userLegacy = userResult?.legacy;
 
-    console.log("Twitter API response:", JSON.stringify(data, null, 2));
-
     if (!userResult || !userLegacy) {
       return null;
     }
