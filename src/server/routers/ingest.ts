@@ -4,6 +4,7 @@ import { pickRandomColorPair } from "@/lib/colors";
 import { fetchTwitterProfileWithEnvVars } from "@/lib/twitter";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { attachTwitterAssetsIfAny } from "@/server/routers/utils/twitter-import";
 
 export const ingestRouter = router({
   process: publicProcedure
@@ -98,6 +99,9 @@ Input: ${text}`,
         data: { nodeId: nodeId!, type: "note", description: text },
         select: { id: true },
       });
+
+      // Ensure twitter assets are attached for AI-created events too
+      void attachTwitterAssetsIfAny(ctx.prisma as any, event.id, text);
 
       return { nodeId, eventId: event.id, createdNode };
     }),

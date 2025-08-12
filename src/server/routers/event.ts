@@ -2,6 +2,7 @@ import { router, publicProcedure } from "@/server/trpc";
 import { z } from "zod";
 import { uploadEventMediaInput, createEventInput } from "@/lib/schemas";
 import { fetchTweetImageUrlsWithEnvVars } from "@/lib/twitter";
+import { attachTwitterAssetsIfAny } from "@/server/routers/utils/twitter-import";
 import crypto from "node:crypto";
 import imageSize from "image-size";
 import { fetchTwitterProfileWithEnvVars } from "@/lib/twitter";
@@ -42,122 +43,14 @@ export const eventRouter = router({
         select: { id: true, description: true },
       });
 
-      // Fire-and-forget: if the description contains a Twitter/X profile URL, fetch avatar and attach as media
-      void (async () => {
-        try {
-          const text = created.description ?? "";
-          const match = text.match(
-            /@?https?:\/\/(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,15})(?:[\/?].*)?/i
-          );
-          const handle = match?.[1];
-          if (!handle) return;
+      // Fire-and-forget: attach any Twitter assets (avatar/tweet photos)
+      void attachTwitterAssetsIfAny(
+        ctx.prisma as any,
+        created.id,
+        created.description
+      );
 
-          const profile = await fetchTwitterProfileWithEnvVars(handle);
-          if (!profile?.avatar) return;
-
-          const res = await fetch(profile.avatar);
-          if (!res.ok) return;
-          const mimeType = res.headers.get("content-type") || "image/jpeg";
-          const arrayBuf = await res.arrayBuffer();
-          const bytes = Buffer.from(arrayBuf);
-          const sha256 = crypto
-            .createHash("sha256")
-            .update(bytes)
-            .digest("hex");
-
-          let imageWidth: number | null = null;
-          let imageHeight: number | null = null;
-          try {
-            const dim = imageSize(bytes);
-            if (dim.width && dim.height) {
-              imageWidth = dim.width;
-              imageHeight = dim.height;
-            }
-          } catch {}
-
-          const media = await ctx.prisma.media.upsert({
-            where: { sha256 },
-            update: {},
-            create: {
-              mimeType,
-              kind: mimeType.startsWith("image/") ? "image" : "other",
-              byteSize: bytes.length,
-              sha256,
-              imageWidth: imageWidth ?? undefined,
-              imageHeight: imageHeight ?? undefined,
-              data: bytes,
-            },
-          });
-
-          await ctx.prisma.eventMedia.upsert({
-            where: {
-              eventId_mediaId: { eventId: created.id, mediaId: media.id },
-            },
-            update: { visible: true },
-            create: { eventId: created.id, mediaId: media.id, visible: true },
-          });
-          // Touch event to bump updatedAt so clients watching list/media can notice changes
-          await ctx.prisma.event.update({
-            where: { id: created.id },
-            data: { updatedAt: new Date() },
-          });
-        } catch {
-          // Silently ignore background errors
-        }
-      })();
-
-      // Also, if the text includes a tweet URL with images, import the images as media
-      void (async () => {
-        try {
-          const text = created.description ?? "";
-          const tweet = text.match(
-            /https?:\/\/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i
-          );
-          const tweetId = tweet?.[1];
-          if (!tweetId) return;
-          const urls = await fetchTweetImageUrlsWithEnvVars(tweetId);
-          for (const u of urls) {
-            const res = await fetch(u);
-            if (!res.ok) continue;
-            const mimeType = res.headers.get("content-type") || "image/jpeg";
-            const arrayBuf = await res.arrayBuffer();
-            const bytes = Buffer.from(arrayBuf);
-            const sha256 = crypto
-              .createHash("sha256")
-              .update(bytes)
-              .digest("hex");
-            let imageWidth: number | null = null;
-            let imageHeight: number | null = null;
-            try {
-              const dim = imageSize(bytes);
-              if (dim.width && dim.height) {
-                imageWidth = dim.width;
-                imageHeight = dim.height;
-              }
-            } catch {}
-            const media = await ctx.prisma.media.upsert({
-              where: { sha256 },
-              update: {},
-              create: {
-                mimeType,
-                kind: "image",
-                byteSize: bytes.length,
-                sha256,
-                imageWidth: imageWidth ?? undefined,
-                imageHeight: imageHeight ?? undefined,
-                data: bytes,
-              },
-            });
-            await ctx.prisma.eventMedia.upsert({
-              where: {
-                eventId_mediaId: { eventId: created.id, mediaId: media.id },
-              },
-              update: { visible: true },
-              create: { eventId: created.id, mediaId: media.id, visible: true },
-            });
-          }
-        } catch {}
-      })();
+      // Tweet photos handled inside attachTwitterAssetsIfAny
 
       return { id: created.id };
     }),
