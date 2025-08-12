@@ -13,6 +13,11 @@ import { fetchTwitterProfile } from "@/lib/twitter";
 
 export default function Home() {
   const utils = api.useUtils();
+  const params =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null;
+  const showArchived = params?.get("archived") === "1";
   const nodes = api.node.list.useQuery();
   const linksQuery = api.link.list.useQuery();
   const createNode = api.node.create.useMutation({
@@ -27,14 +32,17 @@ export default function Home() {
   });
 
   const [addOpen, setAddOpen] = useState(false);
-  const nodeItems = (nodes.data ?? []) as Array<{
-    id: string;
-    label: string;
-    type: NodeType | null | undefined;
-    colorHexLight?: string | null;
-    colorHexDark?: string | null;
-    imageMediaId?: string | null;
-  }>;
+  const nodeItems = (
+    (nodes.data ?? []) as Array<{
+      id: string;
+      label: string;
+      type: NodeType | null | undefined;
+      colorHexLight?: string | null;
+      colorHexDark?: string | null;
+      imageMediaId?: string | null;
+      archived?: boolean;
+    }>
+  ).filter((n) => (showArchived ? true : !(n as any).archived));
   // events handled within NodeRow
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -113,6 +121,20 @@ export default function Home() {
           }))}
           onSelect={(id) => setSelectedNodeId(id)}
         />
+        <div className="mt-3">
+          <button
+            className="text-sm text-slate-600 underline hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            onClick={() => {
+              const url = new URL(window.location.href);
+              if (showArchived) url.searchParams.delete("archived");
+              else url.searchParams.set("archived", "1");
+              window.history.replaceState(null, "", url.toString());
+              utils.node.list.invalidate();
+            }}
+          >
+            {showArchived ? "Hide archived" : "Show archived"}
+          </button>
+        </div>
       </section>
 
       <AddNodeModal
@@ -378,8 +400,95 @@ function SettingsTab({
       onClose();
     },
   });
+  const archive = api.node.archive.useMutation({
+    onSuccess: async () => {
+      await utils.node.list.invalidate();
+    },
+  });
+  const updateColors = api.node.updateColors.useMutation({
+    onSuccess: async () => {
+      await utils.node.list.invalidate();
+    },
+  });
+  const node = (api.node.list.useQuery().data ?? []).find(
+    (n: any) => n.id === nodeId
+  ) as any;
+  const [light, setLight] = useState<string>(node?.colorHexLight ?? "#e2e8f0");
+  const [dark, setDark] = useState<string>(node?.colorHexDark ?? "#1f2937");
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <div
+          className="flex w-1/2 items-center justify-between rounded-lg border p-3"
+          style={{ borderColor: light }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="h-8 w-8 rounded"
+              style={{ backgroundColor: light }}
+            />
+            <div className="text-xs text-slate-600 dark:text-slate-300">
+              Light color
+            </div>
+          </div>
+          <input
+            type="color"
+            value={light}
+            onChange={(e) => setLight(e.target.value)}
+            className="h-9 w-12 cursor-pointer rounded-md border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-slate-900"
+          />
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <button
+            className="rounded border px-2 py-1 text-xs"
+            onClick={() => setDark(light)}
+            title="Copy light → dark"
+          >
+            →
+          </button>
+          <button
+            className="rounded border px-2 py-1 text-xs"
+            onClick={() => setLight(dark)}
+            title="Copy dark → light"
+          >
+            ←
+          </button>
+        </div>
+        <div
+          className="flex w-1/2 items-center justify-between rounded-lg border p-3"
+          style={{ borderColor: dark }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="h-8 w-8 rounded"
+              style={{ backgroundColor: dark }}
+            />
+            <div className="text-xs text-slate-600 dark:text-slate-300">
+              Dark color
+            </div>
+          </div>
+          <input
+            type="color"
+            value={dark}
+            onChange={(e) => setDark(e.target.value)}
+            className="h-9 w-12 cursor-pointer rounded-md border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-slate-900"
+          />
+        </div>
+      </div>
+      <div>
+        <button
+          className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+          onClick={async () => {
+            await updateColors.mutateAsync({
+              id: nodeId,
+              colorHexLight: light,
+              colorHexDark: dark,
+            } as any);
+          }}
+        >
+          Save colors
+        </button>
+      </div>
       <button
         className="rounded-md bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
         onClick={async () => {
@@ -389,8 +498,17 @@ function SettingsTab({
       >
         Delete node
       </button>
+      <button
+        className="rounded-md bg-slate-200 px-3 py-2 text-sm text-slate-900 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        onClick={async () => {
+          await archive.mutateAsync({ id: nodeId, archived: true } as any);
+          onClose();
+        }}
+      >
+        Archive node
+      </button>
       <div className="text-xs text-slate-500 dark:text-slate-400">
-        Archive coming soon
+        Archived nodes are hidden by default; use "Show archived" to view them.
       </div>
     </div>
   );

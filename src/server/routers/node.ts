@@ -165,4 +165,38 @@ export const nodeRouter = router({
       // Cascades will delete links/events via schema
       return ctx.prisma.node.delete({ where: { id: input.id } });
     }),
+
+  archive: publicProcedure
+    .input(z.object({ id: z.string().cuid(), archived: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.node.update({
+        where: { id: input.id },
+        data: { archived: input.archived },
+      });
+    }),
+
+  updateColors: publicProcedure
+    .input(
+      z.object({
+        id: z.string().cuid(),
+        colorHexLight: z
+          .string()
+          .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+          .optional(),
+        colorHexDark: z
+          .string()
+          .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+          .optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.node.update({
+        where: { id: input.id },
+        data: {
+          colorHexLight: input.colorHexLight ?? undefined,
+          colorHexDark: input.colorHexDark ?? undefined,
+        },
+        select: { id: true, colorHexLight: true, colorHexDark: true },
+      });
+    }),
 });
