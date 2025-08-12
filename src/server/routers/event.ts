@@ -170,15 +170,14 @@ export const eventRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const normalize = (s: string) =>
+        s.toLowerCase().replace(/[^a-z0-9]/g, "");
       const uniqueNames = Array.from(
-        new Set(input.tags.map((t) => t.trim()).filter(Boolean))
+        new Set(input.tags.map((t) => normalize(t)).filter(Boolean))
       );
       const tagIds: string[] = [];
       for (const name of uniqueNames) {
-        const slug = name
-          .toLocaleLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-+|-+$)/g, "");
+        const slug = name; // already normalized
         const tag = await ctx.prisma.tag.upsert({
           where: { slug },
           update: { name },

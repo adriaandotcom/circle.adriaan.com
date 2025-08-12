@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useMemo, useRef, useState, type ReactNode } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { PaperAirplaneIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -8,7 +14,6 @@ import { HashtagIcon } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
 import { type NodeType } from "@/lib/schemas";
-import NodeAutocomplete from "@/components/NodeAutocomplete";
 
 export default function NodeRow({
   node,
@@ -70,16 +75,27 @@ export default function NodeRow({
   const [showTags, setShowTags] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState<string>("");
+  const tagButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tagDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [tagDropdownRect, setTagDropdownRect] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const allTags = api.event.tags.useQuery();
-  const tagOptions = useMemo(
-    () =>
-      ((allTags.data ?? []) as Array<{ id: string; name: string }>).map(
-        (t) => ({ id: t.name, label: t.name })
-      ),
-    [allTags.data]
-  );
+  const normalizeTag = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const tagOptions = useMemo(() => {
+    const opts = ((allTags.data ?? []) as Array<{ id: string; name: string }>)
+      .map((t) => normalizeTag(t.name))
+      .filter((n) => !selectedTags.includes(n));
+    const q = normalizeTag(tagDraft);
+    return q ? opts.filter((o) => o.includes(q)) : opts.slice(0, 50);
+  }, [allTags.data, tagDraft, selectedTags]);
   const addTag = (name: string) => {
-    const v = name.trim();
+    const v = normalizeTag(name);
     if (!v) return;
     setSelectedTags((prev) =>
       prev.includes(v) ? prev : [...prev, v].slice(0, 20)
@@ -87,7 +103,37 @@ export default function NodeRow({
     setTagDraft("");
   };
   const removeTag = (name: string) =>
-    setSelectedTags((prev) => prev.filter((t) => t !== name));
+    setSelectedTags((prev) => prev.filter((t) => t !== normalizeTag(name)));
+
+  useEffect(() => {
+    if (!showTags) return;
+    const update = () => {
+      const btn = tagButtonRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      setTagDropdownRect({ left: r.left, top: r.bottom + 4 });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (
+        tagDropdownRef.current &&
+        !tagDropdownRef.current.contains(target as Node) &&
+        tagButtonRef.current &&
+        !tagButtonRef.current.contains(target as Node)
+      ) {
+        setShowTags(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+      document.removeEventListener("mousedown", onDocClick);
+    };
+  }, [showTags]);
 
   const caretPos = () => textareaRef.current?.selectionStart ?? text.length;
   const prefixUntilCaret = () => text.slice(0, caretPos());
@@ -248,7 +294,12 @@ export default function NodeRow({
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     e.preventDefault();
                     const cleanDescription = text.trim();
-                    if (!cleanDescription && files.length === 0) return;
+                    if (
+                      !cleanDescription &&
+                      files.length === 0 &&
+                      selectedTags.length === 0
+                    )
+                      return;
                     const storageDescription =
                       convertToStorageFormat(cleanDescription);
                     const created = await addEvent.mutateAsync({
@@ -256,6 +307,12 @@ export default function NodeRow({
                       description: storageDescription || "",
                     });
                     try {
+                      if (selectedTags.length) {
+                        await addTags.mutateAsync({
+                          eventId: created.id,
+                          tags: selectedTags,
+                        });
+                      }
                       if (files.length) {
                         const toBase64 = async (f: File): Promise<string> =>
                           await new Promise((resolve, reject) => {
@@ -286,6 +343,8 @@ export default function NodeRow({
                     } finally {
                       setFiles([]);
                       setText("");
+                      setSelectedTags([]);
+                      setShowTags(false);
                       await events.refetch();
                     }
                     return;
@@ -358,31 +417,73 @@ export default function NodeRow({
                 <button
                   type="button"
                   className="text-slate-500 hover:text-slate-300"
+                  ref={tagButtonRef}
                   onClick={() => setShowTags((v) => !v)}
                   title="Add tags"
                   aria-label="Add tags"
                 >
                   <HashtagIcon className="h-5 w-5" />
                 </button>
-                {showTags ? (
-                  <div className="w-40">
-                    <NodeAutocomplete
-                      options={tagOptions}
-                      value={tagDraft}
-                      onChange={(v: string) => setTagDraft(v)}
-                      onCommit={(v: string) => addTag(v)}
+                {showTags && tagDropdownRect ? (
+                  <div
+                    ref={tagDropdownRef}
+                    className="z-[10000] rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                    style={{
+                      position: "fixed",
+                      left: tagDropdownRect.left,
+                      top: tagDropdownRect.top,
+                      width: 240,
+                    }}
+                  >
+                    <input
+                      className="mb-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
                       placeholder="Add tag…"
-                      freeText
+                      value={tagDraft}
+                      onChange={(e) => setTagDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const first = tagOptions[0];
+                          addTag(first ?? tagDraft);
+                        } else if (e.key === "Escape") setShowTags(false);
+                      }}
+                      autoFocus
                     />
-                    {tagDraft && (
-                      <button
-                        type="button"
-                        className="mt-1 rounded border px-2 py-0.5 text-[10px]"
-                        onClick={() => addTag(tagDraft)}
-                      >
-                        Add "{tagDraft}"
-                      </button>
-                    )}
+                    <ul className="max-h-48 overflow-auto">
+                      {tagOptions.length === 0 ? (
+                        tagDraft.trim() ? (
+                          <li
+                            className="cursor-pointer rounded px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              addTag(tagDraft.trim());
+                            }}
+                          >
+                            Hit{" "}
+                            <kbd className="rounded-md border px-1.5 py-0.5 text-[10px]">
+                              enter
+                            </kbd>{" "}
+                            to add "{tagDraft.trim()}" tag
+                          </li>
+                        ) : (
+                          <li className="px-2 py-1 text-xs text-slate-500 dark:text-slate-400">
+                            No results
+                          </li>
+                        )
+                      ) : (
+                        tagOptions.map((name) => (
+                          <li
+                            key={name}
+                            className="cursor-pointer rounded px-2 py-1 text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              addTag(name);
+                            }}
+                          >
+                            {name}
+                          </li>
+                        ))
+                      )}
+                    </ul>
                   </div>
                 ) : null}
               </div>
@@ -393,7 +494,12 @@ export default function NodeRow({
                 className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-300"
                 onClick={async () => {
                   const cleanDescription = text.trim();
-                  if (!cleanDescription && files.length === 0) return;
+                  if (
+                    !cleanDescription &&
+                    files.length === 0 &&
+                    selectedTags.length === 0
+                  )
+                    return;
                   const storageDescription =
                     convertToStorageFormat(cleanDescription);
                   const created = await addEvent.mutateAsync({
