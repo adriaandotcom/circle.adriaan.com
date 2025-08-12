@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type NodeType } from "@/lib/schemas";
+import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/trpc/react";
 
 const AddNodeModal = ({
   open,
@@ -16,11 +18,19 @@ const AddNodeModal = ({
   onCreate: (label: string, type: NodeType, color?: string) => Promise<void>;
   isCreating?: boolean;
 }) => {
-  const [tab, setTab] = useState<"manual" | "automatic">("manual");
+  const [tab, setTab] = useState<"automatic" | "manual">("automatic");
   const [label, setLabel] = useState("");
   const [type, setType] = useState<NodeType>("person");
   const [color, setColor] = useState<string>("#7c3aed");
-  const [url, setUrl] = useState<string>("");
+  const [aiText, setAiText] = useState<string>("");
+  const utils = api.useUtils();
+  const ingest = api.ingest.process.useMutation({
+    onSuccess: async () => {
+      await utils.node.list.invalidate();
+      await utils.event.invalidate();
+      onOpenChange(false);
+    },
+  });
   const typeOptions: Array<{ value: NodeType; label: string }> = [
     { value: "person", label: "Person" },
     { value: "group", label: "Group" },
@@ -38,7 +48,7 @@ const AddNodeModal = ({
   useEffect(() => {
     if (!open) return;
     setLabel("");
-    setUrl("");
+    setAiText("");
     const saved =
       typeof window !== "undefined"
         ? localStorage.getItem("last-node-type")
@@ -70,26 +80,10 @@ const AddNodeModal = ({
     onOpenChange(false);
   };
 
-  const extractLabelFromUrl = (u: string): string => {
-    try {
-      const str = u.trim();
-      const m = str.match(
-        /https?:\/\/(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,15})(?:[\/?].*)?/i
-      );
-      if (m?.[1]) return m[1].toLowerCase();
-      const urlObj = new URL(str);
-      const path = urlObj.pathname.split("/").filter(Boolean)[0];
-      return path || urlObj.hostname;
-    } catch {
-      return u.trim();
-    }
-  };
-
   const submitAutomatic = async () => {
-    const lbl = extractLabelFromUrl(url);
-    if (!lbl) return;
-    await onCreate(lbl, "person", undefined);
-    onOpenChange(false);
+    const text = aiText.trim();
+    if (!text) return;
+    await ingest.mutateAsync({ text });
   };
 
   if (!open) return null;
@@ -123,8 +117,8 @@ const AddNodeModal = ({
         </div>
         <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2 text-sm dark:border-slate-700">
           {[
-            { k: "manual", label: "Manual" },
             { k: "automatic", label: "Automatic" },
+            { k: "manual", label: "Manual" },
           ].map((t) => (
             <button
               key={t.k}
@@ -202,15 +196,16 @@ const AddNodeModal = ({
         ) : null}
 
         {tab === "automatic" ? (
-          <div className="space-y-4">
-            <Input
-              placeholder="Paste a URL (e.g. https://x.com/username)"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+          <div className="space-y-3">
+            <Textarea
+              placeholder="Type anything… e.g. I met @https://x.com/mikewiendels yesterday via Group X and he works on example.com"
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              className="min-h-[100px]"
             />
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              We'll extract a name from the URL. Twitter/X handles become the
-              item name.
+              Uses AI to extract the right person or organization and attach
+              your note.
             </div>
           </div>
         ) : null}
@@ -233,11 +228,11 @@ const AddNodeModal = ({
             </Button>
           ) : (
             <Button
-              disabled={!url.trim() || !!isCreating}
+              disabled={!aiText.trim() || ingest.isPending}
               onClick={submitAutomatic}
               className="px-5"
             >
-              Add
+              {ingest.isPending ? "Adding…" : "Add"}
             </Button>
           )}
         </div>
