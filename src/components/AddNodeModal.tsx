@@ -98,7 +98,7 @@ const AddNodeModal = ({
         </div>
         <div className="space-y-4">
           <Input
-            placeholder="Label"
+            placeholder="Enter name or link..."
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
