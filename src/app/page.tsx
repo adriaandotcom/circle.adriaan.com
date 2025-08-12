@@ -43,6 +43,7 @@ export default function Home() {
       archived?: boolean;
     }>
   ).filter((n) => (showArchived ? true : !(n as any).archived));
+  const visibleNodeIds = new Set(nodeItems.map((n) => n.id));
   // events handled within NodeRow
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -57,11 +58,15 @@ export default function Home() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const allLinks: SvgLink[] = (linksQuery.data ?? []).map((l: any) => ({
-    id: l.id,
-    source: l.nodeA?.id ?? l.nodeAId,
-    target: l.nodeB?.id ?? l.nodeBId,
-  }));
+  const allLinks: SvgLink[] = (linksQuery.data ?? [])
+    .map((l: any) => ({
+      id: l.id,
+      source: l.nodeA?.id ?? l.nodeAId,
+      target: l.nodeB?.id ?? l.nodeBId,
+    }))
+    .filter(
+      (l) => visibleNodeIds.has(l.source) && visibleNodeIds.has(l.target)
+    );
 
   const graphNodes: SvgNode[] = (() => {
     if (!selectedNodeId)
@@ -418,6 +423,7 @@ function SettingsTab({
   ) as any;
   const [light, setLight] = useState<string>(node?.colorHexLight ?? "#e2e8f0");
   const [dark, setDark] = useState<string>(node?.colorHexDark ?? "#1f2937");
+  const isArchived = !!node?.archived;
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -500,11 +506,14 @@ function SettingsTab({
       <button
         className="rounded-md bg-slate-200 px-3 py-2 text-sm text-slate-900 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
         onClick={async () => {
-          await archive.mutateAsync({ id: nodeId, archived: true } as any);
+          await archive.mutateAsync({
+            id: nodeId,
+            archived: !isArchived,
+          } as any);
           onClose();
         }}
       >
-        Archive node
+        {isArchived ? "Unarchive node" : "Archive node"}
       </button>
       <div className="text-xs text-slate-500 dark:text-slate-400">
         Archived nodes are hidden by default; use "Show archived" to view them.
