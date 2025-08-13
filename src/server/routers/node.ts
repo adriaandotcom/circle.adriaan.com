@@ -11,6 +11,16 @@ export const nodeRouter = router({
     return ctx.prisma.node.findMany({ orderBy: { createdAt: "desc" } });
   }),
 
+  recentAi: publicProcedure.query(async ({ ctx }) => {
+    const items = await ctx.prisma.node.findMany({
+      where: { addedBy: "ai" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, label: true, type: true, createdAt: true },
+    });
+    return items;
+  }),
+
   search: publicProcedure
     .input(
       z.object({

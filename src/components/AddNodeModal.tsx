@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { type NodeType } from "@/lib/schemas";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
+import { TrashIcon } from "@heroicons/react/24/outline";
 
 const AddNodeModal = ({
   open,
@@ -253,20 +254,50 @@ const AddNodeModal = ({
 export default AddNodeModal;
 
 function HistoryList() {
-  const itemsQuery = api.event.recentAi.useQuery();
+  const aiEvents = api.event.recentAi.useQuery();
+  const aiNodes = api.node.recentAi.useQuery();
   const utils = api.useUtils();
-  const del = api.event.delete.useMutation({
+  const delEvent = api.event.delete.useMutation({
     onSuccess: async () => {
       await utils.event.recentAi.invalidate();
     },
   });
-  const items = (itemsQuery.data ?? []) as Array<{
+  const delNode = api.node.delete.useMutation({
+    onSuccess: async () => {
+      await utils.node.recentAi.invalidate();
+      await utils.node.list.invalidate();
+    },
+  });
+  const events = (aiEvents.data ?? []) as Array<{
     id: string;
     createdAt: string | Date;
     description?: string | null;
     nodeId?: string | null;
     nodeLabel?: string | null;
   }>;
+  const nodes = (aiNodes.data ?? []) as Array<{
+    id: string;
+    label: string;
+    type: string | null;
+    createdAt: string | Date;
+  }>;
+  const items = [
+    ...events.map((e) => ({
+      id: e.id,
+      createdAt: e.createdAt,
+      kind: "event" as const,
+      title: e.nodeLabel ?? "(unknown)",
+      description: e.description ?? "",
+    })),
+    ...nodes.map((n) => ({
+      id: n.id,
+      createdAt: n.createdAt,
+      kind: "node" as const,
+      title: n.label,
+      description: "",
+    })),
+  ].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+
   if (!items.length)
     return (
       <div className="text-sm text-slate-500 dark:text-slate-400">
@@ -275,25 +306,42 @@ function HistoryList() {
     );
   return (
     <ul className="space-y-2">
-      {items.map((e) => (
+      {items.map((it) => (
         <li
-          key={e.id}
+          key={`${it.kind}-${it.id}`}
           className="flex items-start justify-between rounded border border-slate-200 p-2 text-sm dark:border-slate-700"
         >
           <div className="mr-2">
-            <div className="font-medium">{e.nodeLabel ?? "(unknown)"}</div>
-            <div className="text-slate-600 dark:text-slate-300 line-clamp-2">
-              {e.description}
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{it.title}</span>
+              <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300">
+                {it.kind}
+              </span>
             </div>
+            {it.description ? (
+              <div className="text-slate-600 dark:text-slate-300 line-clamp-2">
+                {it.description}
+              </div>
+            ) : null}
           </div>
           <button
-            className="rounded bg-red-600 px-2 py-1 text-white"
+            className="rounded p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
             onClick={async () => {
-              if (!confirm("Delete this AI-added item?")) return;
-              await del.mutateAsync({ id: e.id });
+              if (it.kind === "event") {
+                if (!confirm("Delete this AI-added event?")) return;
+                await delEvent.mutateAsync({ id: it.id });
+              } else {
+                if (
+                  !confirm(
+                    "Delete this AI-created node? This will remove its data."
+                  )
+                )
+                  return;
+                await delNode.mutateAsync({ id: it.id });
+              }
             }}
           >
-            Delete
+            <TrashIcon className="h-5 w-5 text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100" />
           </button>
         </li>
       ))}
