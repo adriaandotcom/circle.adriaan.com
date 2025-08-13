@@ -130,13 +130,25 @@ Input: ${text}`,
         resolved.push({ ...r, label });
       }
 
+      // Deduplicate by node id to avoid duplicate events/links for the same node
+      const byId = new Map<
+        string,
+        { id: string; created: boolean; label: string }
+      >();
+      for (const r of resolved) if (!byId.has(r.id)) byId.set(r.id, r);
+      const nodesUniq = Array.from(byId.values());
+
       // Create links for all pairs (sorted to honor unique constraint)
-      for (let i = 0; i < resolved.length; i++) {
-        for (let j = i + 1; j < resolved.length; j++) {
+      for (let i = 0; i < nodesUniq.length; i++) {
+        for (let j = i + 1; j < nodesUniq.length; j++) {
           const a =
-            resolved[i].id < resolved[j].id ? resolved[i].id : resolved[j].id;
+            nodesUniq[i].id < nodesUniq[j].id
+              ? nodesUniq[i].id
+              : nodesUniq[j].id;
           const b =
-            resolved[i].id < resolved[j].id ? resolved[j].id : resolved[i].id;
+            nodesUniq[i].id < nodesUniq[j].id
+              ? nodesUniq[j].id
+              : nodesUniq[i].id;
           await ctx.prisma.link.upsert({
             where: { nodeAId_nodeBId: { nodeAId: a, nodeBId: b } },
             update: {},
@@ -145,26 +157,36 @@ Input: ${text}`,
         }
       }
 
-      // Create an event on each resolved node
+      // Create events: if only one node, create one event; if multiple nodes, keep per-node
       const eventIds: string[] = [];
-      for (const r of resolved) {
+      if (nodesUniq.length <= 1) {
+        const nodeId = nodesUniq[0].id;
         const event = await ctx.prisma.event.create({
-          data: {
-            nodeId: r.id,
-            type: "note",
-            description: text,
-            addedBy: "ai",
-          },
+          data: { nodeId, type: "note", description: text, addedBy: "ai" },
           select: { id: true },
         });
         eventIds.push(event.id);
         void attachTwitterAssetsIfAny(ctx.prisma as any, event.id, text);
+      } else {
+        for (const r of nodesUniq) {
+          const event = await ctx.prisma.event.create({
+            data: {
+              nodeId: r.id,
+              type: "note",
+              description: text,
+              addedBy: "ai",
+            },
+            select: { id: true },
+          });
+          eventIds.push(event.id);
+          void attachTwitterAssetsIfAny(ctx.prisma as any, event.id, text);
+        }
       }
 
       return {
-        nodeIds: resolved.map((r) => r.id),
+        nodeIds: nodesUniq.map((r) => r.id),
         eventIds,
-        createdNodes: resolved.filter((r) => r.created).map((r) => r.id),
+        createdNodes: nodesUniq.filter((r) => r.created).map((r) => r.id),
       };
     }),
 });

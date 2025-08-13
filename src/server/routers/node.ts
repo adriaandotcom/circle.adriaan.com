@@ -125,116 +125,89 @@ export const nodeRouter = router({
       });
       if (!original) throw new Error("Media not found");
 
-      // Optionally detect/crop face first; if it fails, fall back to original
-      const replicate = new Replicate({
-        auth: process.env.REPLICATE_API_TOKEN,
-      });
-      const originalBlob = new Blob([original.data], {
-        type: original.mimeType,
-      });
-
-      const normalizeUrl = (v: any): string | null => {
-        if (!v) return null;
-        if (typeof v === "string") return v;
-        if (typeof v.url === "function") return v.url();
-        if (typeof v.url === "string") return v.url;
-        return null;
-      };
-
-      let inputBytes: Buffer = Buffer.from(original.data);
-      let faceDetected = false;
-      try {
-        const faceOutput: any = await replicate.run(
-          "ahmdyassr/detect-crop-face:23ef97b1c72422837f0b25aacad4ec5fa8e2423e2660bc4599347287e14cf94d",
-          { input: { image: originalBlob, padding: 0.6 } }
-        );
-        let faceUrl: string | null = normalizeUrl(faceOutput);
-        if (!faceUrl && Array.isArray(faceOutput)) {
-          for (const it of faceOutput) {
-            const u = normalizeUrl(it);
-            if (u) {
-              faceUrl = u;
-              break;
-            }
-          }
-        }
-        if (faceUrl) {
-          const r = await fetch(faceUrl);
-          if (r.ok) {
-            const buf = Buffer.from(await r.arrayBuffer());
-            if (buf.length > 0) {
-              inputBytes = buf;
-              faceDetected = true;
-            }
-          }
-        }
-      } catch {
-        // ignore face detection failures
-      }
-
-      // If no face was detected, do not remove background either; just use the original media as avatar
-      if (!faceDetected) {
-        return ctx.prisma.node.update({
-          where: { id: input.nodeId },
-          data: { imageMediaId: original.id },
-          select: { id: true, imageMediaId: true },
-        });
-      }
-
-      // Call Replicate BiRefNet to remove background using the face-cropped (or original) image
-      const blob = new Blob([inputBytes], { type: original.mimeType });
-      const url = await (async () => {
-        const output: any = await replicate.run(
-          "851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
-          { input: { image: blob } }
-        );
-        const direct = normalizeUrl(output);
-        if (direct) return direct;
-        if (Array.isArray(output)) {
-          for (const it of output) {
-            const u = normalizeUrl(it);
-            if (u) return u;
-          }
-        }
-        throw new Error("Unexpected Replicate output");
-      })();
-
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error("Failed to download processed image");
-      const arrayBuf = await resp.arrayBuffer();
-      const bytes = Buffer.from(arrayBuf);
-      const sha256 = crypto.createHash("sha256").update(bytes).digest("hex");
-
-      let imageWidth: number | null = null;
-      let imageHeight: number | null = null;
-      try {
-        const dim = imageSize(bytes);
-        if (dim.width && dim.height) {
-          imageWidth = dim.width;
-          imageHeight = dim.height;
-        }
-      } catch {}
-
-      // Store as a new Media record (duplicate with background removed)
-      const processed = await ctx.prisma.media.upsert({
-        where: { sha256 },
-        update: {},
-        create: {
-          mimeType: "image/png", // rembg returns PNG
-          kind: "image",
-          byteSize: bytes.length,
-          sha256,
-          imageWidth: imageWidth ?? undefined,
-          imageHeight: imageHeight ?? undefined,
-          data: bytes,
-        },
-      });
-
-      return ctx.prisma.node.update({
+      // Set original immediately so user sees it right away
+      const updated = await ctx.prisma.node.update({
         where: { id: input.nodeId },
-        data: { imageMediaId: processed.id },
+        data: { imageMediaId: original.id },
         select: { id: true, imageMediaId: true },
       });
+
+      // Fire-and-forget: try to crop face and replace avatar if successful
+      void (async () => {
+        try {
+          const replicate = new Replicate({
+            auth: process.env.REPLICATE_API_TOKEN,
+          });
+          const originalBlob = new Blob([original.data], {
+            type: original.mimeType,
+          });
+
+          const normalizeUrl = (v: any): string | null => {
+            if (!v) return null;
+            if (typeof v === "string") return v;
+            if (typeof v.url === "function") return v.url();
+            if (typeof v.url === "string") return v.url;
+            if (Array.isArray(v)) {
+              for (const it of v) {
+                const u = normalizeUrl(it);
+                if (u) return u;
+              }
+            }
+            return null;
+          };
+
+          const faceOutput: any = await replicate.run(
+            "ahmdyassr/detect-crop-face:23ef97b1c72422837f0b25aacad4ec5fa8e2423e2660bc4599347287e14cf94d",
+            { input: { image: originalBlob, padding: 0.6 } }
+          );
+          const faceUrl = normalizeUrl(faceOutput);
+          if (!faceUrl) return;
+
+          const r = await fetch(faceUrl);
+          if (!r.ok) return;
+          const bytes = Buffer.from(await r.arrayBuffer());
+          if (bytes.length === 0) return;
+
+          const sha256 = crypto
+            .createHash("sha256")
+            .update(bytes)
+            .digest("hex");
+
+          let imageWidth: number | null = null;
+          let imageHeight: number | null = null;
+          try {
+            const dim = imageSize(bytes);
+            if (dim.width && dim.height) {
+              imageWidth = dim.width;
+              imageHeight = dim.height;
+            }
+          } catch {}
+
+          const processed = await ctx.prisma.media.upsert({
+            where: { sha256 },
+            update: {},
+            create: {
+              mimeType: original.mimeType,
+              kind: "image",
+              byteSize: bytes.length,
+              sha256,
+              imageWidth: imageWidth ?? undefined,
+              imageHeight: imageHeight ?? undefined,
+              data: bytes,
+            },
+          });
+
+          await ctx.prisma.node.update({
+            where: { id: input.nodeId },
+            data: { imageMediaId: processed.id },
+            select: { id: true },
+          });
+        } catch {
+          // ignore background crop failures
+        }
+      })();
+
+      return updated;
     }),
 
   delete: publicProcedure
